@@ -17,6 +17,7 @@ type IT struct {
 	dockerClient    *client.Client
 	dockerNetworkId string
 	mysqlServer     services.MysqlServer
+	redis           services.Redis
 }
 
 func NewIT() *IT {
@@ -89,4 +90,20 @@ func (it *IT) MysqlServer() services.MysqlServer {
 
 func (it *IT) MysqlDatabase() services.MysqlDatabase {
 	return it.MysqlServer().Database()
+}
+
+func (it *IT) Redis() services.Redis {
+	it.mutex.Lock()
+	defer it.mutex.Unlock()
+
+	if it.redis == nil {
+		it.redis = services.NewRedisDocker(it.DockerClient(), it.prefix+"-redis", it.DockerNetworkId())
+		it.deferCleanup(it.redis.Cleanup)
+	}
+
+	return it.redis
+}
+
+func (it *IT) RedisServer() services.RedisServer {
+	return it.Redis().Server()
 }
