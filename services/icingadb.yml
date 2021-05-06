@@ -1,0 +1,8 @@
+database:
+  host: {{.Mysql.Host}}
+  port: {{.Mysql.Port}}
+  database: {{.Mysql.Database}}
+  user: {{.Mysql.Username}}
+  password: {{.Mysql.Password}}
+redis:
+  address: {{.Redis.Address}}

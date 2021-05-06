@@ -2,11 +2,13 @@ package itesting
 
 import (
 	"context"
+	"fmt"
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/client"
 	"github.com/icinga/icinga-testing/services"
 	"github.com/icinga/icinga-testing/utils"
 	"log"
+	"os"
 	"sync"
 )
 
@@ -19,6 +21,7 @@ type IT struct {
 	mysqlServer     services.MysqlServer
 	redis           services.Redis
 	icinga2         services.Icinga2
+	icingaDb        services.IcingaDb
 }
 
 func NewIT() *IT {
@@ -123,4 +126,26 @@ func (it *IT) Icinga2() services.Icinga2 {
 
 func (it *IT) Icinga2Node(name string) services.Icinga2Node {
 	return it.Icinga2().Node(name)
+}
+
+func (it *IT) IcingaDb() services.IcingaDb {
+	key := "ICINGA_TESTING_ICINGADB_BINARY"
+	path, ok := os.LookupEnv(key)
+	if !ok {
+		panic(fmt.Errorf("environment variable %s must be set", key))
+	}
+
+	it.mutex.Lock()
+	defer it.mutex.Unlock()
+
+	if it.icingaDb == nil {
+		it.icingaDb = services.NewIcingaDbDockerBinary(it.DockerClient(), it.prefix+"-icingaDb", it.DockerNetworkId(), path)
+		it.deferCleanup(it.icingaDb.Cleanup)
+	}
+
+	return it.icingaDb
+}
+
+func (it *IT) IcingaDbInstance(redis services.RedisServer, mysql services.MysqlDatabase) services.IcingaDbInstance {
+	return it.IcingaDb().Instance(redis, mysql)
 }
