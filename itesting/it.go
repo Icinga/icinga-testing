@@ -18,6 +18,7 @@ type IT struct {
 	dockerNetworkId string
 	mysqlServer     services.MysqlServer
 	redis           services.Redis
+	icinga2         services.Icinga2
 }
 
 func NewIT() *IT {
@@ -106,4 +107,20 @@ func (it *IT) Redis() services.Redis {
 
 func (it *IT) RedisServer() services.RedisServer {
 	return it.Redis().Server()
+}
+
+func (it *IT) Icinga2() services.Icinga2 {
+	it.mutex.Lock()
+	defer it.mutex.Unlock()
+
+	if it.icinga2 == nil {
+		it.icinga2 = services.NewIcinga2Docker(it.DockerClient(), it.prefix+"-icinga2", it.DockerNetworkId())
+		it.deferCleanup(it.icinga2.Cleanup)
+	}
+
+	return it.icinga2
+}
+
+func (it *IT) Icinga2Node(name string) services.Icinga2Node {
+	return it.Icinga2().Node(name)
 }
