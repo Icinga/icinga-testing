@@ -32,6 +32,7 @@ func (i *icinga2Docker) Node(name string) Icinga2Node {
 
 	cont, err := i.dockerClient.ContainerCreate(context.Background(), &container.Config{
 		Image: "icinga/icinga2:latest",
+		Env:   []string{"ICINGA_MASTER=1"},
 	}, nil, &network.NetworkingConfig{
 		EndpointsConfig: map[string]*network.EndpointSettings{
 			networkName: {
