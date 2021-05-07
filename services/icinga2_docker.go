@@ -7,7 +7,10 @@ import (
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/network"
 	"github.com/docker/docker/client"
+	"io"
 	"log"
+	"os"
+	"time"
 )
 
 type icinga2Docker struct {
@@ -28,14 +31,18 @@ func NewIcinga2Docker(dockerClient *client.Client, containerNamePrefix string, d
 
 func (i *icinga2Docker) Node(name string) Icinga2Node {
 	containerName := fmt.Sprintf("%s-%s", i.containerNamePrefix, name)
-	networkName := "net"
+
+	net, err := i.dockerClient.NetworkInspect(context.Background(), i.dockerNetworkId, types.NetworkInspectOptions{})
+	if err != nil {
+		panic(err)
+	}
 
 	cont, err := i.dockerClient.ContainerCreate(context.Background(), &container.Config{
-		Image: "icinga/icinga2:latest",
+		Image: "icinga/icinga2:master",
 		Env:   []string{"ICINGA_MASTER=1"},
 	}, nil, &network.NetworkingConfig{
 		EndpointsConfig: map[string]*network.EndpointSettings{
-			networkName: {
+			net.Name: {
 				NetworkID: i.dockerNetworkId,
 			},
 		},
@@ -55,7 +62,7 @@ func (i *icinga2Docker) Node(name string) Icinga2Node {
 	if err != nil {
 		panic(err)
 	}
-	containerAddress := inspect.NetworkSettings.Networks[networkName].IPAddress
+	containerAddress := inspect.NetworkSettings.Networks[net.Name].IPAddress
 
 	return &icinga2DockerNode{
 		icinga2NodeInfo: icinga2NodeInfo{
@@ -78,6 +85,75 @@ type icinga2DockerNode struct {
 }
 
 var _ Icinga2Node = (*icinga2DockerNode)(nil)
+
+func (n *icinga2DockerNode) Reload() {
+	// TODO(jb): debug why signal doesn't work
+	//err := n.icinga2Docker.dockerClient.ContainerKill(context.Background(), n.containerId, "HUP")
+	err := n.icinga2Docker.dockerClient.ContainerRestart(context.Background(), n.containerId, nil)
+	if err != nil {
+		panic(err)
+	}
+}
+
+func (n *icinga2DockerNode) WriteConfig(file string, data []byte) {
+	log.Printf("writing %q to container %s (%q)", file, n.containerId, data)
+	c := n.icinga2Docker.dockerClient
+	exec, err := c.ContainerExecCreate(context.Background(), n.containerId, types.ExecConfig{
+		Cmd:          []string{"tee", "/" + file},
+		AttachStdin:  true,
+		AttachStderr: true,
+		Detach:       true,
+	})
+	if err != nil {
+		panic(err)
+	}
+	attach, err := c.ContainerExecAttach(context.Background(), exec.ID, types.ExecStartCheck{})
+	if err != nil {
+		panic(err)
+	}
+	_, err = attach.Conn.Write(data)
+	if err != nil {
+		panic(err)
+	}
+	err = attach.CloseWrite()
+	if err != nil {
+		panic(err)
+	}
+	for {
+		log.Printf("waiting for file write")
+		inspect, err := c.ContainerExecInspect(context.Background(), exec.ID)
+		if err != nil {
+			panic(err)
+		}
+		if !inspect.Running {
+			if inspect.ExitCode == 0 {
+				break
+			} else {
+				panic(fmt.Errorf("writing %q in container failed with exit code %d", file, inspect.ExitCode))
+			}
+		}
+		time.Sleep(25 * time.Millisecond)
+	}
+	// TODO(jb): proper error handling
+	log.Print("file written (hopefully)")
+	io.Copy(os.Stderr, attach.Reader)
+	log.Print("file written")
+}
+
+func (n *icinga2DockerNode) EnableIcingaDb(redis RedisServer) {
+	Icinga2NodeWriteIcingaDbConf(n, redis)
+	c := n.icinga2Docker.dockerClient
+	exec, err := c.ContainerExecCreate(context.Background(), n.containerId, types.ExecConfig{
+		Cmd: []string{"icinga2", "feature", "enable", "icingadb"},
+	})
+	if err != nil {
+		panic(err)
+	}
+	err = c.ContainerExecStart(context.Background(), exec.ID, types.ExecStartCheck{})
+	if err != nil {
+		panic(err)
+	}
+}
 
 func (n *icinga2DockerNode) Cleanup() {
 	err := n.icinga2Docker.dockerClient.ContainerRemove(context.Background(), n.containerId, types.ContainerRemoveOptions{

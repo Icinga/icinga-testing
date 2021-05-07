@@ -3,7 +3,6 @@ package services
 import (
 	_ "embed"
 	"io"
-	"io/ioutil"
 	"regexp"
 	"strings"
 	"text/template"
@@ -41,12 +40,11 @@ func IcingaDbInstanceWriteConfig(i IcingaDbInstance, w io.Writer) error {
 	return icingadbYmlTemplate.Execute(w, i)
 }
 
+// TODO(jb): properly import schema
+//go:embed icingadb_mysql_schema.sql
+var icingadbMysqlSchema string
+
 func IcingaDbInstanceImportSchema(i IcingaDbInstance) {
-	// TODO: properly import schema
-	schema, err := ioutil.ReadFile("/testing/icingadb.mysql.schema.sql")
-	if err != nil {
-		panic(err)
-	}
 	db, err := MysqlDatabaseOpen(i.Mysql())
 	if err != nil {
 		panic(err)
@@ -54,7 +52,7 @@ func IcingaDbInstanceImportSchema(i IcingaDbInstance) {
 	// duplicated from https://github.com/Icinga/docker-icingadb/blob/master/entrypoint/main.go
 	sqlComment := regexp.MustCompile(`(?m)^--.*`)
 	sqlStmtSep := regexp.MustCompile(`(?m);$`)
-	for _, ddl := range sqlStmtSep.Split(string(sqlComment.ReplaceAll(schema, nil)), -1) {
+	for _, ddl := range sqlStmtSep.Split(string(sqlComment.ReplaceAllString(icingadbMysqlSchema, "")), -1) {
 		if ddl = strings.TrimSpace(ddl); ddl != "" {
 			if _, err := db.Exec(ddl); err != nil {
 				panic(err)

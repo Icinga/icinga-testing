@@ -1,8 +1,11 @@
 package services
 
 import (
+	"bytes"
 	"crypto/tls"
+	_ "embed"
 	"net/http"
+	"text/template"
 )
 
 type Icinga2 interface {
@@ -13,6 +16,9 @@ type Icinga2 interface {
 type Icinga2Node interface {
 	Host() string
 	Port() string
+	Reload()
+	WriteConfig(file string, data []byte)
+	EnableIcingaDb(redis RedisServer)
 	Cleanup()
 }
 
@@ -45,6 +51,19 @@ func Icinga2NodeApiClient(n Icinga2Node) *http.Client {
 			},
 		},
 	}
+}
+
+//go:embed icinga2_icingadb.conf
+var icinga2IcingaDbConfRawTemplate string
+var icinga2IcingaDbConfTemplate = template.Must(template.New("icingadb.conf").Parse(icinga2IcingaDbConfRawTemplate))
+
+func Icinga2NodeWriteIcingaDbConf(n Icinga2Node, r RedisServer) {
+	b := bytes.NewBuffer(nil)
+	err := icinga2IcingaDbConfTemplate.Execute(b, r)
+	if err != nil {
+		panic(err)
+	}
+	n.WriteConfig("etc/icinga2/features-available/icingadb.conf", b.Bytes())
 }
 
 type icinga2NodeApiHttpTransport struct {

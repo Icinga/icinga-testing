@@ -5,4 +5,4 @@ database:
   user: {{.Mysql.Username}}
   password: {{.Mysql.Password}}
 redis:
-  address: {{.Redis.Address}}
+  address: {{.Redis.Host}}:{{.Redis.Port}}

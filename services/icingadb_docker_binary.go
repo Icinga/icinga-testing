@@ -48,6 +48,9 @@ func (i *icingaDbDockerBinary) Instance(redis RedisServer, mysql MysqlDatabase) 
 		},
 		icingaDbDockerBinary: i,
 	}
+
+	IcingaDbInstanceImportSchema(inst)
+
 	configFile, err := ioutil.TempFile("", "icingadb.yml")
 	if err != nil {
 		panic(err)
