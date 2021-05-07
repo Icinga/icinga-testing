@@ -7,6 +7,7 @@ import (
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/network"
 	"github.com/docker/docker/client"
+	"github.com/icinga/icinga-testing/utils"
 	"io"
 	"log"
 	"os"
@@ -58,15 +59,9 @@ func (i *icinga2Docker) Node(name string) Icinga2Node {
 	}
 	log.Printf("started icinga2 container: %s (%s)", containerName, cont.ID)
 
-	inspect, err := i.dockerClient.ContainerInspect(context.Background(), cont.ID)
-	if err != nil {
-		panic(err)
-	}
-	containerAddress := inspect.NetworkSettings.Networks[net.Name].IPAddress
-
 	return &icinga2DockerNode{
 		icinga2NodeInfo: icinga2NodeInfo{
-			host: containerAddress,
+			host: utils.MustString(utils.DockerContainerAddress(context.Background(), i.dockerClient, cont.ID)),
 			port: "5665",
 		},
 		icinga2Docker: i,

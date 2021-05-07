@@ -7,6 +7,7 @@ import (
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/network"
 	"github.com/docker/docker/client"
+	"github.com/icinga/icinga-testing/utils"
 	"log"
 	"sync/atomic"
 	"time"
@@ -53,15 +54,9 @@ func (r *redisDocker) Server() RedisServer {
 	}
 	log.Printf("started redis container: %s (%s)", containerName, cont.ID)
 
-	inspect, err := r.dockerClient.ContainerInspect(context.Background(), cont.ID)
-	if err != nil {
-		panic(err)
-	}
-	containerAddress := inspect.NetworkSettings.Networks[networkName].IPAddress
-
 	s := &redisDockerServer{
 		redisServerInfo: redisServerInfo{
-			host: containerAddress,
+			host: utils.MustString(utils.DockerContainerAddress(context.Background(), r.dockerClient, cont.ID)),
 			port: "6379",
 		},
 		redisDocker: r,

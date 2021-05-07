@@ -46,11 +46,7 @@ func NewMysqlDocker(dockerClient *client.Client, containerName string, dockerNet
 	}
 	log.Printf("started mysql container: %s", cont.ID)
 
-	inspect, err := dockerClient.ContainerInspect(context.Background(), cont.ID)
-	if err != nil {
-		panic(err)
-	}
-	containerAddress := inspect.NetworkSettings.Networks[networkName].IPAddress
+	containerAddress := utils.MustString(utils.DockerContainerAddress(context.Background(), dockerClient, cont.ID))
 
 	d := &MysqlDocker{
 		mysqlServerWithRootCreds: NewMysqlServerWithRootCreds(containerAddress, "3306", "root", rootPassword),
