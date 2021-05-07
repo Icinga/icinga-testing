@@ -89,6 +89,8 @@ var _ Icinga2Node = (*icinga2DockerNode)(nil)
 func (n *icinga2DockerNode) Reload() {
 	// TODO(jb): debug why signal doesn't work
 	//err := n.icinga2Docker.dockerClient.ContainerKill(context.Background(), n.containerId, "HUP")
+	// TODO(jb): there seems to be some race condition here
+	time.Sleep(2*time.Second)
 	err := n.icinga2Docker.dockerClient.ContainerRestart(context.Background(), n.containerId, nil)
 	if err != nil {
 		panic(err)
