@@ -139,7 +139,7 @@ func (it *IT) IcingaDb() services.IcingaDb {
 	defer it.mutex.Unlock()
 
 	if it.icingaDb == nil {
-		it.icingaDb = services.NewIcingaDbDockerBinary(it.DockerClient(), it.prefix+"-icingaDb", it.DockerNetworkId(), path)
+		it.icingaDb = services.NewIcingaDbDockerBinary(it.DockerClient(), it.prefix+"-icingadb", it.DockerNetworkId(), path)
 		it.deferCleanup(it.icingaDb.Cleanup)
 	}
 
