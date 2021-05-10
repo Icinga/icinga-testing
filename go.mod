@@ -12,8 +12,10 @@ require (
 	github.com/moby/term v0.0.0-20201216013528-df9cb8a40635 // indirect
 	github.com/morikuni/aec v1.0.0 // indirect
 	github.com/sirupsen/logrus v1.8.1 // indirect
-	github.com/stretchr/testify v1.7.0 // indirect
-	go.uber.org/zap v1.10.0
+	github.com/stretchr/testify v1.7.0
+	go.opentelemetry.io/otel v0.20.0 // indirect
+	go.uber.org/multierr v1.7.0 // indirect
+	go.uber.org/zap v1.16.0
 	golang.org/x/time v0.0.0-20210220033141-f8bda1e9f3ba // indirect
 	google.golang.org/grpc v1.37.0 // indirect
 )
