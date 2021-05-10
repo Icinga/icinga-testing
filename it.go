@@ -1,4 +1,4 @@
-package itesting
+package icingatesting
 
 import (
 	"context"
