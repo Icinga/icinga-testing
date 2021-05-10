@@ -106,7 +106,7 @@ func (it *IT) Cleanup() {
 	}
 }
 
-func (it *IT) MysqlServer() services.MysqlServer {
+func (it *IT) getMysqlServer() services.MysqlServer {
 	it.mutex.Lock()
 	defer it.mutex.Unlock()
 
@@ -119,10 +119,10 @@ func (it *IT) MysqlServer() services.MysqlServer {
 }
 
 func (it *IT) MysqlDatabase() services.MysqlDatabase {
-	return it.MysqlServer().Database()
+	return it.getMysqlServer().Database()
 }
 
-func (it *IT) Redis() services.Redis {
+func (it *IT) getRedis() services.Redis {
 	it.mutex.Lock()
 	defer it.mutex.Unlock()
 
@@ -135,10 +135,10 @@ func (it *IT) Redis() services.Redis {
 }
 
 func (it *IT) RedisServer() services.RedisServer {
-	return it.Redis().Server()
+	return it.getRedis().Server()
 }
 
-func (it *IT) Icinga2() services.Icinga2 {
+func (it *IT) getIcinga2() services.Icinga2 {
 	it.mutex.Lock()
 	defer it.mutex.Unlock()
 
@@ -151,10 +151,10 @@ func (it *IT) Icinga2() services.Icinga2 {
 }
 
 func (it *IT) Icinga2Node(name string) services.Icinga2Node {
-	return it.Icinga2().Node(name)
+	return it.getIcinga2().Node(name)
 }
 
-func (it *IT) IcingaDb() services.IcingaDb {
+func (it *IT) getIcingaDb() services.IcingaDb {
 	key := "ICINGA_TESTING_ICINGADB_BINARY"
 	path, ok := os.LookupEnv(key)
 	if !ok {
@@ -174,5 +174,5 @@ func (it *IT) IcingaDb() services.IcingaDb {
 }
 
 func (it *IT) IcingaDbInstance(redis services.RedisServer, mysql services.MysqlDatabase) services.IcingaDbInstance {
-	return it.IcingaDb().Instance(redis, mysql)
+	return it.getIcingaDb().Instance(redis, mysql)
 }
