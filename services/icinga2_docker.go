@@ -55,37 +55,37 @@ func (i *icinga2Docker) Node(name string) Icinga2Node {
 	}, nil, containerName)
 	if err != nil {
 		i.logger.Fatal("failed to create icinga2 container",
-			zap.String("name", containerName),
+			zap.String("container-name", containerName),
 			zap.Error(err))
 	}
 	i.logger.Debug("created icinga2 container",
-		zap.String("name", containerName),
-		zap.String("id", cont.ID))
+		zap.String("container-name", containerName),
+		zap.String("container-id", cont.ID))
 
 	err = utils.ForwardDockerContainerOutput(context.Background(), i.dockerClient, cont.ID,
 		false, utils.NewLineWriter(func(line []byte) {
 			i.logger.Debug("container output",
-				zap.String("name", containerName),
-				zap.String("id", cont.ID),
+				zap.String("container-name", containerName),
+				zap.String("container-id", cont.ID),
 				zap.ByteString("line", line))
 		}))
 	if err != nil {
 		i.logger.Fatal("failed to attach to container output",
-			zap.String("name", containerName),
-			zap.String("id", cont.ID),
+			zap.String("container-name", containerName),
+			zap.String("container-id", cont.ID),
 			zap.Error(err))
 	}
 
 	err = i.dockerClient.ContainerStart(context.Background(), cont.ID, types.ContainerStartOptions{})
 	if err != nil {
 		i.logger.Fatal("failed to start container",
-			zap.String("name", containerName),
-			zap.String("id", cont.ID),
+			zap.String("container-name", containerName),
+			zap.String("container-id", cont.ID),
 			zap.Error(err))
 	}
 	i.logger.Debug("started container",
-		zap.String("name", containerName),
-		zap.String("id", cont.ID))
+		zap.String("container-name", containerName),
+		zap.String("container-id", cont.ID))
 
 	n := &icinga2DockerNode{
 		icinga2NodeInfo: icinga2NodeInfo{
@@ -104,8 +104,8 @@ func (i *icinga2Docker) Node(name string) Icinga2Node {
 			break
 		} else if attempt == 100 {
 			i.logger.Fatal("icinga2 failed to start in time",
-				zap.String("name", containerName),
-				zap.String("id", cont.ID),
+				zap.String("container-name", containerName),
+				zap.String("container-id", cont.ID),
 				zap.Error(err))
 		}
 	}
@@ -143,20 +143,20 @@ func (n *icinga2DockerNode) Reload() {
 	err := n.icinga2Docker.dockerClient.ContainerKill(context.Background(), n.containerId, "HUP")
 	if err != nil {
 		n.icinga2Docker.logger.Fatal("failed to send reload signal to container",
-			zap.String("name", n.containerName),
-			zap.String("id", n.containerId))
+			zap.String("container-name", n.containerName),
+			zap.String("container-id", n.containerId))
 	}
 	n.icinga2Docker.logger.Debug("sent reload signal to icinga2",
-		zap.String("name", n.containerName),
-		zap.String("id", n.containerId))
+		zap.String("container-name", n.containerName),
+		zap.String("container-id", n.containerId))
 
 	// TODO(jb): wait for successful reload?
 }
 
 func (n *icinga2DockerNode) WriteConfig(file string, data []byte) {
 	logger := n.icinga2Docker.logger.With(
-		zap.String("name", n.containerName),
-		zap.String("id", n.containerName),
+		zap.String("container-name", n.containerName),
+		zap.String("container-id", n.containerName),
 		zap.String("file", file),
 	)
 
@@ -237,6 +237,6 @@ func (n *icinga2DockerNode) Cleanup() {
 		panic(err)
 	}
 	n.icinga2Docker.logger.Debug("removed icinga2 container",
-		zap.String("name", n.containerName),
-		zap.String("id", n.containerId))
+		zap.String("container-name", n.containerName),
+		zap.String("container-id", n.containerId))
 }

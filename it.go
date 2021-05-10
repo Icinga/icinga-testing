@@ -50,14 +50,14 @@ func NewIT() *IT {
 	}
 
 	if n, err := it.dockerClient.NetworkCreate(context.Background(), it.prefix, types.NetworkCreate{}); err != nil {
-		it.logger.Fatal("failed to create docker network", zap.String("name", it.prefix), zap.Error(err))
+		it.logger.Fatal("failed to create docker network", zap.String("network-name", it.prefix), zap.Error(err))
 	} else {
-		it.logger.Debug("created docker network", zap.String("name", it.prefix), zap.String("id", n.ID))
+		it.logger.Debug("created docker network", zap.String("network-name", it.prefix), zap.String("network-id", n.ID))
 		it.dockerNetworkId = n.ID
 		it.deferCleanup(func() {
 			if err := it.dockerClient.NetworkRemove(context.Background(), it.dockerNetworkId); err != nil {
 				it.logger.Error("failed to remove docker network",
-					zap.String("name", it.prefix), zap.String("id", n.ID), zap.Error(err))
+					zap.String("network-name", it.prefix), zap.String("network-id", n.ID), zap.Error(err))
 			}
 		})
 	}

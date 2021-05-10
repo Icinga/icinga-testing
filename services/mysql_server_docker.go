@@ -24,7 +24,7 @@ var _ MysqlServer = (*MysqlDocker)(nil)
 func NewMysqlDocker(logger *zap.Logger, dockerClient *client.Client, containerName string, dockerNetworkId string) *MysqlDocker {
 	logger = logger.With(
 		zap.Bool("mysql", true),
-		zap.String("name", containerName),
+		zap.String("container-name", containerName),
 	)
 
 	networkName, err := utils.DockerNetworkName(context.Background(), dockerClient, dockerNetworkId)
@@ -50,7 +50,7 @@ func NewMysqlDocker(logger *zap.Logger, dockerClient *client.Client, containerNa
 		logger.Fatal("failed to create mysql container",
 			zap.Error(err))
 	}
-	logger = logger.With(zap.String("id", cont.ID))
+	logger = logger.With(zap.String("container-id", cont.ID))
 	logger.Debug("created mysql container")
 
 	err = utils.ForwardDockerContainerOutput(context.Background(), dockerClient, cont.ID,

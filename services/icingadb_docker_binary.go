@@ -76,7 +76,7 @@ func (i *icingaDbDockerBinary) Instance(redis RedisServer, mysql MysqlDatabase) 
 	}
 
 	containerName := fmt.Sprintf("%s-%d", i.containerNamePrefix, atomic.AddUint32(&i.containerCounter, 1))
-	inst.logger = inst.logger.With(zap.String("name", containerName))
+	inst.logger = inst.logger.With(zap.String("container-name", containerName))
 	networkName, err := utils.DockerNetworkName(context.Background(), i.dockerClient, i.dockerNetworkId)
 	if err != nil {
 		panic(err)
@@ -108,7 +108,7 @@ func (i *icingaDbDockerBinary) Instance(redis RedisServer, mysql MysqlDatabase) 
 		inst.logger.Fatal("failed to create icingadb container")
 	}
 	inst.containerId = cont.ID
-	inst.logger = inst.logger.With(zap.String("id", cont.ID))
+	inst.logger = inst.logger.With(zap.String("container-id", cont.ID))
 	inst.logger.Debug("created container")
 
 	err = utils.ForwardDockerContainerOutput(context.Background(), i.dockerClient, cont.ID,

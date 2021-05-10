@@ -41,7 +41,7 @@ func NewRedisDocker(
 
 func (r *redisDocker) Server() RedisServer {
 	containerName := fmt.Sprintf("%s-%d", r.containerNamePrefix, atomic.AddUint32(&r.containerCounter, 1))
-	logger := r.logger.With(zap.String("name", containerName))
+	logger := r.logger.With(zap.String("container-name", containerName))
 
 	networkName, err := utils.DockerNetworkName(context.Background(), r.dockerClient, r.dockerNetworkId)
 	if err != nil {
@@ -60,7 +60,7 @@ func (r *redisDocker) Server() RedisServer {
 	if err != nil {
 		logger.Fatal("failed to create redis container")
 	}
-	logger = logger.With(zap.String("id", cont.ID))
+	logger = logger.With(zap.String("container-id", cont.ID))
 	logger.Debug("started redis container")
 
 	err = utils.ForwardDockerContainerOutput(context.Background(), r.dockerClient, cont.ID,
