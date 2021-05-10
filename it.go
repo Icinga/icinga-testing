@@ -106,20 +106,12 @@ func (it *IT) Cleanup() {
 	}
 }
 
-func (it *IT) DockerClient() *client.Client {
-	return it.dockerClient
-}
-
-func (it *IT) DockerNetworkId() string {
-	return it.dockerNetworkId
-}
-
 func (it *IT) MysqlServer() services.MysqlServer {
 	it.mutex.Lock()
 	defer it.mutex.Unlock()
 
 	if it.mysqlServer == nil {
-		it.mysqlServer = services.NewMysqlDocker(it.logger, it.DockerClient(), it.prefix+"-mysql", it.DockerNetworkId())
+		it.mysqlServer = services.NewMysqlDocker(it.logger, it.dockerClient, it.prefix+"-mysql", it.dockerNetworkId)
 		it.deferCleanup(it.mysqlServer.Cleanup)
 	}
 
@@ -135,7 +127,7 @@ func (it *IT) Redis() services.Redis {
 	defer it.mutex.Unlock()
 
 	if it.redis == nil {
-		it.redis = services.NewRedisDocker(it.logger, it.DockerClient(), it.prefix+"-redis", it.DockerNetworkId())
+		it.redis = services.NewRedisDocker(it.logger, it.dockerClient, it.prefix+"-redis", it.dockerNetworkId)
 		it.deferCleanup(it.redis.Cleanup)
 	}
 
@@ -151,7 +143,7 @@ func (it *IT) Icinga2() services.Icinga2 {
 	defer it.mutex.Unlock()
 
 	if it.icinga2 == nil {
-		it.icinga2 = services.NewIcinga2Docker(it.logger, it.DockerClient(), it.prefix+"-icinga2", it.DockerNetworkId())
+		it.icinga2 = services.NewIcinga2Docker(it.logger, it.dockerClient, it.prefix+"-icinga2", it.dockerNetworkId)
 		it.deferCleanup(it.icinga2.Cleanup)
 	}
 
@@ -173,8 +165,8 @@ func (it *IT) IcingaDb() services.IcingaDb {
 	defer it.mutex.Unlock()
 
 	if it.icingaDb == nil {
-		it.icingaDb = services.NewIcingaDbDockerBinary(it.logger, it.DockerClient(), it.prefix+"-icingadb",
-			it.DockerNetworkId(), path)
+		it.icingaDb = services.NewIcingaDbDockerBinary(it.logger, it.dockerClient, it.prefix+"-icingadb",
+			it.dockerNetworkId, path)
 		it.deferCleanup(it.icingaDb.Cleanup)
 	}
 
