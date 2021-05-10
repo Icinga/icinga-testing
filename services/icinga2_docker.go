@@ -98,6 +98,19 @@ func (i *icinga2Docker) Node(name string) Icinga2Node {
 		containerName: containerName,
 	}
 
+	for attempt := 1; ; attempt++ {
+		time.Sleep(100 * time.Millisecond)
+		err := Icinga2NodePing(n)
+		if err == nil {
+			break
+		} else if attempt == 100 {
+			i.logger.Fatal("icinga2 failed to start in time",
+				zap.String("name", containerName),
+				zap.String("id", cont.ID),
+				zap.Error(err))
+		}
+	}
+
 	i.runningMutex.Lock()
 	i.running[n] = struct{}{}
 	i.runningMutex.Unlock()
@@ -128,16 +141,17 @@ type icinga2DockerNode struct {
 var _ Icinga2Node = (*icinga2DockerNode)(nil)
 
 func (n *icinga2DockerNode) Reload() {
-	// TODO(jb): debug why signal doesn't work
-	//err := n.icinga2Docker.dockerClient.ContainerKill(context.Background(), n.containerId, "HUP")
-	// TODO(jb): there seems to be some race condition here
-	time.Sleep(2 * time.Second)
-	err := n.icinga2Docker.dockerClient.ContainerRestart(context.Background(), n.containerId, nil)
+	err := n.icinga2Docker.dockerClient.ContainerKill(context.Background(), n.containerId, "HUP")
 	if err != nil {
-		n.icinga2Docker.logger.Fatal("failed to restart container",
+		n.icinga2Docker.logger.Fatal("failed to send reload signal to container",
 			zap.String("name", n.containerName),
 			zap.String("id", n.containerId))
 	}
+	n.icinga2Docker.logger.Debug("sent reload signal to icinga2",
+		zap.String("name", n.containerName),
+		zap.String("id", n.containerId))
+
+	// TODO(jb): wait for successful reload?
 }
 
 func (n *icinga2DockerNode) WriteConfig(file string, data []byte) {

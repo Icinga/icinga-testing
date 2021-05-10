@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"crypto/tls"
 	_ "embed"
+	"fmt"
 	"net/http"
 	"text/template"
 )
@@ -51,6 +52,18 @@ func Icinga2NodeApiClient(n Icinga2Node) *http.Client {
 			},
 		},
 	}
+}
+
+// Icinga2NodePing tries to connect to the API port of an Icinga 2 instance to see if it is running.
+func Icinga2NodePing(n Icinga2Node) error {
+	response, err := Icinga2NodeApiClient(n).Get("/")
+	if err != nil {
+		return err
+	}
+	if response.StatusCode != 401 {
+		return fmt.Errorf("received unexpected status code %d (expected 401)", response.StatusCode)
+	}
+	return nil
 }
 
 //go:embed icinga2_icingadb.conf
