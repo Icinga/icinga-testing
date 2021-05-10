@@ -24,6 +24,14 @@ func DockerContainerAddress(ctx context.Context, client *client.Client, id strin
 	return "", fmt.Errorf("no address found for container %s", id)
 }
 
+func DockerNetworkName(ctx context.Context, client *client.Client, id string) (string, error) {
+	net, err := client.NetworkInspect(context.Background(), id, types.NetworkInspectOptions{})
+	if err != nil {
+		return "", err
+	}
+	return net.Name, nil
+}
+
 // ForwardDockerContainerOutput attaches to a docker container and forwards all its output to a writer.
 func ForwardDockerContainerOutput(
 	ctx context.Context, client *client.Client, containerId string, logs bool, w io.Writer,

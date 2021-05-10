@@ -38,8 +38,7 @@ func NewIcinga2Docker(logger *zap.Logger, dockerClient *client.Client, container
 
 func (i *icinga2Docker) Node(name string) Icinga2Node {
 	containerName := fmt.Sprintf("%s-%s", i.containerNamePrefix, name)
-
-	net, err := i.dockerClient.NetworkInspect(context.Background(), i.dockerNetworkId, types.NetworkInspectOptions{})
+	networkName, err := utils.DockerNetworkName(context.Background(), i.dockerClient, i.dockerNetworkId)
 	if err != nil {
 		panic(err)
 	}
@@ -49,7 +48,7 @@ func (i *icinga2Docker) Node(name string) Icinga2Node {
 		Env:   []string{"ICINGA_MASTER=1"},
 	}, nil, &network.NetworkingConfig{
 		EndpointsConfig: map[string]*network.EndpointSettings{
-			net.Name: {
+			networkName: {
 				NetworkID: i.dockerNetworkId,
 			},
 		},

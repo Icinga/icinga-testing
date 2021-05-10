@@ -77,7 +77,10 @@ func (i *icingaDbDockerBinary) Instance(redis RedisServer, mysql MysqlDatabase) 
 
 	containerName := fmt.Sprintf("%s-%d", i.containerNamePrefix, atomic.AddUint32(&i.containerCounter, 1))
 	inst.logger = inst.logger.With(zap.String("name", containerName))
-	networkName := "net"
+	networkName, err := utils.DockerNetworkName(context.Background(), i.dockerClient, i.dockerNetworkId)
+	if err != nil {
+		panic(err)
+	}
 
 	cont, err := i.dockerClient.ContainerCreate(context.Background(), &container.Config{
 		Image: "alpine:latest",

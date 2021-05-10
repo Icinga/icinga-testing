@@ -42,7 +42,11 @@ func NewRedisDocker(
 func (r *redisDocker) Server() RedisServer {
 	containerName := fmt.Sprintf("%s-%d", r.containerNamePrefix, atomic.AddUint32(&r.containerCounter, 1))
 	logger := r.logger.With(zap.String("name", containerName))
-	networkName := "net"
+
+	networkName, err := utils.DockerNetworkName(context.Background(), r.dockerClient, r.dockerNetworkId)
+	if err != nil {
+		panic(err)
+	}
 
 	cont, err := r.dockerClient.ContainerCreate(context.Background(), &container.Config{
 		Image: "redis:latest",

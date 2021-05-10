@@ -24,7 +24,11 @@ var _ MysqlServer = (*MysqlDocker)(nil)
 func NewMysqlDocker(logger *zap.Logger, dockerClient *client.Client, containerName string, dockerNetworkId string) *MysqlDocker {
 	logger = logger.With(zap.Bool("mysql", true))
 
-	networkName := "net"
+	networkName, err := utils.DockerNetworkName(context.Background(), dockerClient, dockerNetworkId)
+	if err != nil {
+		panic(err)
+	}
+
 	rootPassword := utils.RandomString(16)
 	cont, err := dockerClient.ContainerCreate(context.Background(), &container.Config{
 		ExposedPorts: nil,
