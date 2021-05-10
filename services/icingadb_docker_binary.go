@@ -13,6 +13,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"sync"
 	"sync/atomic"
 )
 
@@ -23,6 +24,9 @@ type icingaDbDockerBinary struct {
 	containerNamePrefix string
 	binaryPath          string
 	containerCounter    uint32
+
+	runningMutex sync.Mutex
+	running      map[*icingaDbDockerBinaryInstance]struct{}
 }
 
 var _ IcingaDb = (*icingaDbDockerBinary)(nil)
@@ -41,6 +45,7 @@ func NewIcingaDbDockerBinary(
 		dockerNetworkId:     dockerNetworkId,
 		containerNamePrefix: containerNamePrefix,
 		binaryPath:          binaryPath,
+		running:             make(map[*icingaDbDockerBinaryInstance]struct{}),
 	}
 }
 
@@ -119,11 +124,24 @@ func (i *icingaDbDockerBinary) Instance(redis RedisServer, mysql MysqlDatabase) 
 	}
 	inst.logger.Debug("started container")
 
+	i.runningMutex.Lock()
+	i.running[inst] = struct{}{}
+	i.runningMutex.Unlock()
+
 	return inst
 }
 
 func (i *icingaDbDockerBinary) Cleanup() {
-	// TODO(jb): remove all instances
+	i.runningMutex.Lock()
+	instances := make([]*icingaDbDockerBinaryInstance, 0, len(i.running))
+	for inst, _ := range i.running {
+		instances = append(instances, inst)
+	}
+	i.runningMutex.Unlock()
+
+	for _, inst := range instances {
+		inst.Cleanup()
+	}
 }
 
 type icingaDbDockerBinaryInstance struct {
@@ -137,6 +155,10 @@ type icingaDbDockerBinaryInstance struct {
 var _ IcingaDbInstance = (*icingaDbDockerBinaryInstance)(nil)
 
 func (i *icingaDbDockerBinaryInstance) Cleanup() {
+	i.icingaDbDockerBinary.runningMutex.Lock()
+	delete(i.icingaDbDockerBinary.running, i)
+	i.icingaDbDockerBinary.runningMutex.Unlock()
+
 	err := i.icingaDbDockerBinary.dockerClient.ContainerRemove(context.Background(), i.containerId, types.ContainerRemoveOptions{
 		Force:         true,
 		RemoveVolumes: true,
