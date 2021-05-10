@@ -53,6 +53,12 @@ func (i *icinga2Docker) Node(name string) Icinga2Node {
 	}
 	log.Printf("created icinga2 container: %s (%s)", containerName, cont.ID)
 
+	err = utils.ForwardDockerContainerOutput(context.Background(), i.dockerClient, cont.ID,
+		false, utils.NewLogWriter(containerName))
+	if err != nil {
+		panic(err)
+	}
+
 	err = i.dockerClient.ContainerStart(context.Background(), cont.ID, types.ContainerStartOptions{})
 	if err != nil {
 		panic(err)

@@ -8,6 +8,7 @@ import (
 	"github.com/docker/docker/api/types/mount"
 	"github.com/docker/docker/api/types/network"
 	"github.com/docker/docker/client"
+	"github.com/icinga/icinga-testing/utils"
 	"io/ioutil"
 	"log"
 	"os"
@@ -94,6 +95,12 @@ func (i *icingaDbDockerBinary) Instance(redis RedisServer, mysql MysqlDatabase) 
 		panic(err)
 	}
 	log.Printf("created icingadb container: %s (%s)", containerName, cont.ID)
+
+	err = utils.ForwardDockerContainerOutput(context.Background(), i.dockerClient, cont.ID,
+		false, utils.NewLogWriter(containerName))
+	if err != nil {
+		panic(err)
+	}
 
 	err = i.dockerClient.ContainerStart(context.Background(), cont.ID, types.ContainerStartOptions{})
 	if err != nil {

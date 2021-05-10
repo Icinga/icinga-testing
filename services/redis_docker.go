@@ -48,6 +48,12 @@ func (r *redisDocker) Server() RedisServer {
 	}
 	log.Printf("created redis container: %s (%s)", containerName, cont.ID)
 
+	err = utils.ForwardDockerContainerOutput(context.Background(), r.dockerClient, cont.ID,
+		false, utils.NewLogWriter(containerName))
+	if err != nil {
+		panic(err)
+	}
+
 	err = r.dockerClient.ContainerStart(context.Background(), cont.ID, types.ContainerStartOptions{})
 	if err != nil {
 		panic(err)

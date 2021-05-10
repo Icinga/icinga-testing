@@ -40,6 +40,12 @@ func NewMysqlDocker(dockerClient *client.Client, containerName string, dockerNet
 	}
 	log.Printf("created mysql container: %s", cont.ID)
 
+	err = utils.ForwardDockerContainerOutput(context.Background(), dockerClient, cont.ID,
+		false, utils.NewLogWriter(containerName))
+	if err != nil {
+		panic(err)
+	}
+
 	err = dockerClient.ContainerStart(context.Background(), cont.ID, types.ContainerStartOptions{})
 	if err != nil {
 		panic(err)
