@@ -22,7 +22,10 @@ type MysqlDocker struct {
 var _ MysqlServer = (*MysqlDocker)(nil)
 
 func NewMysqlDocker(logger *zap.Logger, dockerClient *client.Client, containerName string, dockerNetworkId string) *MysqlDocker {
-	logger = logger.With(zap.Bool("mysql", true))
+	logger = logger.With(
+		zap.Bool("mysql", true),
+		zap.String("name", containerName),
+	)
 
 	networkName, err := utils.DockerNetworkName(context.Background(), dockerClient, dockerNetworkId)
 	if err != nil {
@@ -45,37 +48,24 @@ func NewMysqlDocker(logger *zap.Logger, dockerClient *client.Client, containerNa
 	}, nil, containerName)
 	if err != nil {
 		logger.Fatal("failed to create mysql container",
-			zap.String("name", containerName),
 			zap.Error(err))
 	}
-	logger.Debug("created mysql container",
-		zap.String("name", containerName),
-		zap.String("id", cont.ID))
+	logger = logger.With(zap.String("id", cont.ID))
+	logger.Debug("created mysql container")
 
 	err = utils.ForwardDockerContainerOutput(context.Background(), dockerClient, cont.ID,
 		false, utils.NewLineWriter(func(line []byte) {
-			logger.Debug("container output",
-				zap.String("name", containerName),
-				zap.String("id", cont.ID),
-				zap.ByteString("line", line))
+			logger.Debug("container output", zap.ByteString("line", line))
 		}))
 	if err != nil {
-		logger.Fatal("failed to attach to container output",
-			zap.String("name", containerName),
-			zap.String("id", cont.ID),
-			zap.Error(err))
+		logger.Fatal("failed to attach to container output", zap.Error(err))
 	}
 
 	err = dockerClient.ContainerStart(context.Background(), cont.ID, types.ContainerStartOptions{})
 	if err != nil {
-		logger.Fatal("failed to start container",
-			zap.String("name", containerName),
-			zap.String("id", cont.ID),
-			zap.Error(err))
+		logger.Fatal("failed to start container", zap.Error(err))
 	}
-	logger.Debug("started mysql container",
-		zap.String("name", containerName),
-		zap.String("id", cont.ID))
+	logger.Debug("started mysql container")
 
 	containerAddress := utils.MustString(utils.DockerContainerAddress(context.Background(), dockerClient, cont.ID))
 
@@ -93,10 +83,7 @@ func NewMysqlDocker(logger *zap.Logger, dockerClient *client.Client, containerNa
 		if err == nil {
 			break
 		} else if attempt == 20 {
-			logger.Fatal("mysql failed to start in time",
-				zap.String("name", containerName),
-				zap.String("id", cont.ID),
-				zap.Error(err))
+			logger.Fatal("mysql failed to start in time", zap.Error(err))
 		}
 	}
 
@@ -109,13 +96,8 @@ func (m *MysqlDocker) Cleanup() {
 		RemoveVolumes: true,
 	})
 	if err != nil {
-		m.logger.Error("failed to remove mysql container",
-			zap.String("name", m.containerName),
-			zap.String("id", m.containerId),
-			zap.Error(err))
+		m.logger.Error("failed to remove mysql container", zap.Error(err))
 	} else {
-		m.logger.Debug("removed mysql container",
-			zap.String("name", m.containerName),
-			zap.String("id", m.containerId))
+		m.logger.Debug("removed mysql container")
 	}
 }
