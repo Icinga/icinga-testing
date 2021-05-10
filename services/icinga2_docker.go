@@ -10,6 +10,7 @@ import (
 	"github.com/icinga/icinga-testing/utils"
 	"go.uber.org/zap"
 	"io"
+	"sync"
 	"time"
 )
 
@@ -18,6 +19,9 @@ type icinga2Docker struct {
 	dockerClient        *client.Client
 	dockerNetworkId     string
 	containerNamePrefix string
+
+	runningMutex sync.Mutex
+	running      map[*icinga2DockerNode]struct{}
 }
 
 var _ Icinga2 = (*icinga2Docker)(nil)
@@ -28,6 +32,7 @@ func NewIcinga2Docker(logger *zap.Logger, dockerClient *client.Client, container
 		dockerClient:        dockerClient,
 		dockerNetworkId:     dockerNetworkId,
 		containerNamePrefix: containerNamePrefix,
+		running:             make(map[*icinga2DockerNode]struct{}),
 	}
 }
 
@@ -83,7 +88,7 @@ func (i *icinga2Docker) Node(name string) Icinga2Node {
 		zap.String("name", containerName),
 		zap.String("id", cont.ID))
 
-	return &icinga2DockerNode{
+	n := &icinga2DockerNode{
 		icinga2NodeInfo: icinga2NodeInfo{
 			host: utils.MustString(utils.DockerContainerAddress(context.Background(), i.dockerClient, cont.ID)),
 			port: "5665",
@@ -92,10 +97,25 @@ func (i *icinga2Docker) Node(name string) Icinga2Node {
 		containerId:   cont.ID,
 		containerName: containerName,
 	}
+
+	i.runningMutex.Lock()
+	i.running[n] = struct{}{}
+	i.runningMutex.Unlock()
+
+	return n
 }
 
 func (i *icinga2Docker) Cleanup() {
-	// TODO(jb): remove all containers
+	i.runningMutex.Lock()
+	nodes := make([]*icinga2DockerNode, 0, len(i.running))
+	for n, _ := range i.running {
+		nodes = append(nodes, n)
+	}
+	i.runningMutex.Unlock()
+
+	for _, n := range nodes {
+		n.Cleanup()
+	}
 }
 
 type icinga2DockerNode struct {
@@ -192,6 +212,10 @@ func (n *icinga2DockerNode) EnableIcingaDb(redis RedisServer) {
 }
 
 func (n *icinga2DockerNode) Cleanup() {
+	n.icinga2Docker.runningMutex.Lock()
+	delete(n.icinga2Docker.running, n)
+	n.icinga2Docker.runningMutex.Unlock()
+
 	err := n.icinga2Docker.dockerClient.ContainerRemove(context.Background(), n.containerId, types.ContainerRemoveOptions{
 		Force:         true,
 		RemoveVolumes: true,
