@@ -8,13 +8,13 @@ import (
 	"github.com/docker/docker/api/types/network"
 	"github.com/docker/docker/client"
 	"github.com/icinga/icinga-testing/utils"
+	"go.uber.org/zap"
 	"io"
-	"log"
-	"os"
 	"time"
 )
 
 type icinga2Docker struct {
+	logger              *zap.Logger
 	dockerClient        *client.Client
 	dockerNetworkId     string
 	containerNamePrefix string
@@ -22,8 +22,9 @@ type icinga2Docker struct {
 
 var _ Icinga2 = (*icinga2Docker)(nil)
 
-func NewIcinga2Docker(dockerClient *client.Client, containerNamePrefix string, dockerNetworkId string) Icinga2 {
+func NewIcinga2Docker(logger *zap.Logger, dockerClient *client.Client, containerNamePrefix string, dockerNetworkId string) Icinga2 {
 	return &icinga2Docker{
+		logger:              logger.With(zap.Bool("icinga2", true)),
 		dockerClient:        dockerClient,
 		dockerNetworkId:     dockerNetworkId,
 		containerNamePrefix: containerNamePrefix,
@@ -49,21 +50,38 @@ func (i *icinga2Docker) Node(name string) Icinga2Node {
 		},
 	}, nil, containerName)
 	if err != nil {
-		panic(err)
+		i.logger.Fatal("failed to create icinga2 container",
+			zap.String("name", containerName),
+			zap.Error(err))
 	}
-	log.Printf("created icinga2 container: %s (%s)", containerName, cont.ID)
+	i.logger.Debug("created icinga2 container",
+		zap.String("name", containerName),
+		zap.String("id", cont.ID))
 
 	err = utils.ForwardDockerContainerOutput(context.Background(), i.dockerClient, cont.ID,
-		false, utils.NewLogWriter(containerName))
+		false, utils.NewLineWriter(func(line []byte) {
+			i.logger.Debug("container output",
+				zap.String("name", containerName),
+				zap.String("id", cont.ID),
+				zap.ByteString("line", line))
+		}))
 	if err != nil {
-		panic(err)
+		i.logger.Fatal("failed to attach to container output",
+			zap.String("name", containerName),
+			zap.String("id", cont.ID),
+			zap.Error(err))
 	}
 
 	err = i.dockerClient.ContainerStart(context.Background(), cont.ID, types.ContainerStartOptions{})
 	if err != nil {
-		panic(err)
+		i.logger.Fatal("failed to start container",
+			zap.String("name", containerName),
+			zap.String("id", cont.ID),
+			zap.Error(err))
 	}
-	log.Printf("started icinga2 container: %s (%s)", containerName, cont.ID)
+	i.logger.Debug("started container",
+		zap.String("name", containerName),
+		zap.String("id", cont.ID))
 
 	return &icinga2DockerNode{
 		icinga2NodeInfo: icinga2NodeInfo{
@@ -72,6 +90,7 @@ func (i *icinga2Docker) Node(name string) Icinga2Node {
 		},
 		icinga2Docker: i,
 		containerId:   cont.ID,
+		containerName: containerName,
 	}
 }
 
@@ -83,6 +102,7 @@ type icinga2DockerNode struct {
 	icinga2NodeInfo
 	icinga2Docker *icinga2Docker
 	containerId   string
+	containerName string
 }
 
 var _ Icinga2Node = (*icinga2DockerNode)(nil)
@@ -91,15 +111,23 @@ func (n *icinga2DockerNode) Reload() {
 	// TODO(jb): debug why signal doesn't work
 	//err := n.icinga2Docker.dockerClient.ContainerKill(context.Background(), n.containerId, "HUP")
 	// TODO(jb): there seems to be some race condition here
-	time.Sleep(2*time.Second)
+	time.Sleep(2 * time.Second)
 	err := n.icinga2Docker.dockerClient.ContainerRestart(context.Background(), n.containerId, nil)
 	if err != nil {
-		panic(err)
+		n.icinga2Docker.logger.Fatal("failed to restart container",
+			zap.String("name", n.containerName),
+			zap.String("id", n.containerId))
 	}
 }
 
 func (n *icinga2DockerNode) WriteConfig(file string, data []byte) {
-	log.Printf("writing %q to container %s (%q)", file, n.containerId, data)
+	logger := n.icinga2Docker.logger.With(
+		zap.String("name", n.containerName),
+		zap.String("id", n.containerName),
+		zap.String("file", file),
+	)
+
+	logger.Debug("writing file to container", zap.ByteString("data", data))
 	c := n.icinga2Docker.dockerClient
 	exec, err := c.ContainerExecCreate(context.Background(), n.containerId, types.ExecConfig{
 		Cmd:          []string{"tee", "/" + file},
@@ -108,39 +136,44 @@ func (n *icinga2DockerNode) WriteConfig(file string, data []byte) {
 		Detach:       true,
 	})
 	if err != nil {
-		panic(err)
+		logger.Fatal("failed to create container exec", zap.Error(err))
 	}
 	attach, err := c.ContainerExecAttach(context.Background(), exec.ID, types.ExecStartCheck{})
 	if err != nil {
-		panic(err)
+		logger.Fatal("failed to attach container exec", zap.Error(err))
 	}
 	_, err = attach.Conn.Write(data)
 	if err != nil {
-		panic(err)
+		logger.Fatal("failed to write data to container exec", zap.Error(err))
 	}
 	err = attach.CloseWrite()
 	if err != nil {
-		panic(err)
+		logger.Fatal("failed to close container exec", zap.Error(err))
 	}
 	for {
-		log.Printf("waiting for file write")
 		inspect, err := c.ContainerExecInspect(context.Background(), exec.ID)
 		if err != nil {
 			panic(err)
 		}
 		if !inspect.Running {
-			if inspect.ExitCode == 0 {
-				break
+			w := utils.NewLineWriter(func(line []byte) {
+				msg := "container output"
+				field := zap.ByteString("line", line)
+				logger.Error(msg, field)
+			})
+			_, err = io.Copy(w, attach.Reader)
+			if err != nil {
+				logger.Fatal("failed to copy container output", zap.Error(err))
+			}
+
+			if inspect.ExitCode != 0 {
+				logger.Fatal("writing file to container failed", zap.Int("exit-code", inspect.ExitCode))
 			} else {
-				panic(fmt.Errorf("writing %q in container failed with exit code %d", file, inspect.ExitCode))
+				return
 			}
 		}
 		time.Sleep(25 * time.Millisecond)
 	}
-	// TODO(jb): proper error handling
-	log.Print("file written (hopefully)")
-	io.Copy(os.Stderr, attach.Reader)
-	log.Print("file written")
 }
 
 func (n *icinga2DockerNode) EnableIcingaDb(redis RedisServer) {
@@ -166,5 +199,7 @@ func (n *icinga2DockerNode) Cleanup() {
 	if err != nil {
 		panic(err)
 	}
-	log.Printf("removed redis container: %s", n.containerId)
+	n.icinga2Docker.logger.Debug("removed icinga2 container",
+		zap.String("name", n.containerName),
+		zap.String("id", n.containerId))
 }

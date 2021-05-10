@@ -8,12 +8,13 @@ import (
 	"github.com/docker/docker/api/types/network"
 	"github.com/docker/docker/client"
 	"github.com/icinga/icinga-testing/utils"
-	"log"
+	"go.uber.org/zap"
 	"sync/atomic"
 	"time"
 )
 
 type redisDocker struct {
+	logger              *zap.Logger
 	dockerClient        *client.Client
 	dockerNetworkId     string
 	containerNamePrefix string
@@ -22,8 +23,11 @@ type redisDocker struct {
 
 var _ Redis = (*redisDocker)(nil)
 
-func NewRedisDocker(dockerClient *client.Client, containerNamePrefix string, dockerNetworkId string) Redis {
+func NewRedisDocker(
+	logger *zap.Logger, dockerClient *client.Client, containerNamePrefix string, dockerNetworkId string,
+) Redis {
 	return &redisDocker{
+		logger:              logger.With(zap.Bool("redis", true)),
 		dockerClient:        dockerClient,
 		dockerNetworkId:     dockerNetworkId,
 		containerNamePrefix: containerNamePrefix,
@@ -32,6 +36,7 @@ func NewRedisDocker(dockerClient *client.Client, containerNamePrefix string, doc
 
 func (r *redisDocker) Server() RedisServer {
 	containerName := fmt.Sprintf("%s-%d", r.containerNamePrefix, atomic.AddUint32(&r.containerCounter, 1))
+	logger := r.logger.With(zap.String("name", containerName))
 	networkName := "net"
 
 	cont, err := r.dockerClient.ContainerCreate(context.Background(), &container.Config{
@@ -44,21 +49,26 @@ func (r *redisDocker) Server() RedisServer {
 		},
 	}, nil, containerName)
 	if err != nil {
-		panic(err)
+		logger.Fatal("failed to create redis container")
 	}
-	log.Printf("created redis container: %s (%s)", containerName, cont.ID)
+	logger = logger.With(zap.String("id", cont.ID))
+	logger.Debug("started redis container")
 
 	err = utils.ForwardDockerContainerOutput(context.Background(), r.dockerClient, cont.ID,
-		false, utils.NewLogWriter(containerName))
+		false, utils.NewLineWriter(func(line []byte) {
+			logger.Debug("container output",
+				zap.ByteString("line", line))
+		}))
 	if err != nil {
-		panic(err)
+		logger.Fatal("failed to attach to container output",
+			zap.Error(err))
 	}
 
 	err = r.dockerClient.ContainerStart(context.Background(), cont.ID, types.ContainerStartOptions{})
 	if err != nil {
-		panic(err)
+		logger.Fatal("failed to start container")
 	}
-	log.Printf("started redis container: %s (%s)", containerName, cont.ID)
+	logger.Debug("started container")
 
 	s := &redisDockerServer{
 		redisServerInfo: redisServerInfo{
@@ -66,6 +76,7 @@ func (r *redisDocker) Server() RedisServer {
 			port: "6379",
 		},
 		redisDocker: r,
+		logger:      logger,
 		containerId: cont.ID,
 	}
 
@@ -93,6 +104,7 @@ func (r *redisDocker) Cleanup() {
 type redisDockerServer struct {
 	redisServerInfo
 	redisDocker *redisDocker
+	logger      *zap.Logger
 	containerId string
 }
 
@@ -104,7 +116,7 @@ func (s *redisDockerServer) Cleanup() {
 	if err != nil {
 		panic(err)
 	}
-	log.Printf("removed redis container: %s", s.containerId)
+	s.logger.Debug("removed container")
 }
 
 var _ RedisServer = (*redisDockerServer)(nil)

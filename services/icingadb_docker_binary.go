@@ -9,14 +9,15 @@ import (
 	"github.com/docker/docker/api/types/network"
 	"github.com/docker/docker/client"
 	"github.com/icinga/icinga-testing/utils"
+	"go.uber.org/zap"
 	"io/ioutil"
-	"log"
 	"os"
 	"path/filepath"
 	"sync/atomic"
 )
 
 type icingaDbDockerBinary struct {
+	logger              *zap.Logger
 	dockerClient        *client.Client
 	dockerNetworkId     string
 	containerNamePrefix string
@@ -27,13 +28,15 @@ type icingaDbDockerBinary struct {
 var _ IcingaDb = (*icingaDbDockerBinary)(nil)
 
 func NewIcingaDbDockerBinary(
-	dockerClient *client.Client, containerNamePrefix string, dockerNetworkId string, binaryPath string,
+	logger *zap.Logger, dockerClient *client.Client, containerNamePrefix string,
+	dockerNetworkId string, binaryPath string,
 ) IcingaDb {
 	binaryPath, err := filepath.Abs(binaryPath)
 	if err != nil {
 		panic(err)
 	}
 	return &icingaDbDockerBinary{
+		logger:              logger.With(zap.Bool("icingadb", true)),
 		dockerClient:        dockerClient,
 		dockerNetworkId:     dockerNetworkId,
 		containerNamePrefix: containerNamePrefix,
@@ -47,6 +50,7 @@ func (i *icingaDbDockerBinary) Instance(redis RedisServer, mysql MysqlDatabase) 
 			redis: redis,
 			mysql: mysql,
 		},
+		logger:               i.logger,
 		icingaDbDockerBinary: i,
 	}
 
@@ -67,6 +71,7 @@ func (i *icingaDbDockerBinary) Instance(redis RedisServer, mysql MysqlDatabase) 
 	}
 
 	containerName := fmt.Sprintf("%s-%d", i.containerNamePrefix, atomic.AddUint32(&i.containerCounter, 1))
+	inst.logger = inst.logger.With(zap.String("name", containerName))
 	networkName := "net"
 
 	cont, err := i.dockerClient.ContainerCreate(context.Background(), &container.Config{
@@ -92,22 +97,27 @@ func (i *icingaDbDockerBinary) Instance(redis RedisServer, mysql MysqlDatabase) 
 		},
 	}, nil, containerName)
 	if err != nil {
-		panic(err)
+		inst.logger.Fatal("failed to create icingadb container")
 	}
-	log.Printf("created icingadb container: %s (%s)", containerName, cont.ID)
+	inst.containerId = cont.ID
+	inst.logger = inst.logger.With(zap.String("id", cont.ID))
+	inst.logger.Debug("created container")
 
 	err = utils.ForwardDockerContainerOutput(context.Background(), i.dockerClient, cont.ID,
-		false, utils.NewLogWriter(containerName))
+		false, utils.NewLineWriter(func(line []byte) {
+			inst.logger.Debug("container output",
+				zap.ByteString("line", line))
+		}))
 	if err != nil {
-		panic(err)
+		inst.logger.Fatal("failed to attach to container output",
+			zap.Error(err))
 	}
 
 	err = i.dockerClient.ContainerStart(context.Background(), cont.ID, types.ContainerStartOptions{})
 	if err != nil {
-		panic(err)
+		inst.logger.Fatal("failed to start container")
 	}
-	inst.containerId = cont.ID
-	log.Printf("started icingadb container: %s (%s)", containerName, cont.ID)
+	inst.logger.Debug("started container")
 
 	return inst
 }
@@ -119,6 +129,7 @@ func (i *icingaDbDockerBinary) Cleanup() {
 type icingaDbDockerBinaryInstance struct {
 	icingaDbInstanceInfo
 	icingaDbDockerBinary *icingaDbDockerBinary
+	logger               *zap.Logger
 	containerId          string
 	configFileName       string
 }
@@ -133,7 +144,7 @@ func (i *icingaDbDockerBinaryInstance) Cleanup() {
 	if err != nil {
 		panic(err)
 	}
-	log.Printf("removed icingadb container: %s", i.containerId)
+	i.logger.Debug("removed container")
 
 	err = os.Remove(i.configFileName)
 	if err != nil {

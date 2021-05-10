@@ -2,12 +2,14 @@ package icingatesting
 
 import (
 	"context"
+	"flag"
 	"fmt"
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/client"
 	"github.com/icinga/icinga-testing/services"
 	"github.com/icinga/icinga-testing/utils"
-	"log"
+	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 	"os"
 	"sync"
 )
@@ -22,37 +24,69 @@ type IT struct {
 	redis           services.Redis
 	icinga2         services.Icinga2
 	icingaDb        services.IcingaDb
+	logger          *zap.Logger
 }
 
+var flagDebugLog = flag.String("icingatesting.debuglog", "", "file to write debug log to")
+
 func NewIT() *IT {
-	it := &IT{}
+	flag.Parse()
 
-	it.prefix = "icinga-testing-" + utils.RandomString(8)
-
-	c, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
-	if err != nil {
-		log.Fatalf("failed to create docker client: %v", err)
+	it := &IT{
+		prefix: "icinga-testing-" + utils.RandomString(8),
 	}
-	it.dockerClient = c
-	it.deferCleanup(func() {
-		if err := it.dockerClient.Close(); err != nil {
-			log.Fatalf("failed to close docker client: %v", err)
-		}
-	})
 
-	network, err := c.NetworkCreate(context.Background(), it.prefix, types.NetworkCreate{})
-	if err != nil {
-		log.Fatalf("failed to create docker network: %v", err)
+	it.setupLogging()
+
+	if c, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation()); err != nil {
+		it.logger.Fatal("failed to create docker client", zap.Error(err))
+	} else {
+		it.dockerClient = c
+		it.deferCleanup(func() {
+			if err := it.dockerClient.Close(); err != nil {
+				it.logger.Error("failed to close docker client", zap.Error(err))
+			}
+		})
 	}
-	log.Printf("created network %s (%s)", it.prefix, network.ID)
-	it.dockerNetworkId = network.ID
-	it.deferCleanup(func() {
-		if err := it.dockerClient.NetworkRemove(context.Background(), it.dockerNetworkId); err != nil {
-			log.Fatalf("failed to remove docker network %s (%s): %v", it.prefix, it.dockerNetworkId, err)
-		}
-	})
+
+	if n, err := it.dockerClient.NetworkCreate(context.Background(), it.prefix, types.NetworkCreate{}); err != nil {
+		it.logger.Fatal("failed to create docker network", zap.String("name", it.prefix), zap.Error(err))
+	} else {
+		it.logger.Debug("created docker network", zap.String("name", it.prefix), zap.String("id", n.ID))
+		it.dockerNetworkId = n.ID
+		it.deferCleanup(func() {
+			if err := it.dockerClient.NetworkRemove(context.Background(), it.dockerNetworkId); err != nil {
+				it.logger.Error("failed to remove docker network",
+					zap.String("name", it.prefix), zap.String("id", n.ID), zap.Error(err))
+			}
+		})
+	}
 
 	return it
+}
+
+func (it *IT) setupLogging() {
+	cores := []zapcore.Core{
+		// Log INFO and higher as console log to stderr
+		zapcore.NewCore(zapcore.NewConsoleEncoder(zap.NewDevelopmentEncoderConfig()),
+			zapcore.Lock(os.Stderr), zapcore.InfoLevel),
+	}
+
+	if *flagDebugLog != "" {
+		w, closeLogs, err := zap.Open(*flagDebugLog)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "failed to open debug log %q: %v", *flagDebugLog, err)
+		}
+		c := zapcore.NewCore(zapcore.NewJSONEncoder(zap.NewDevelopmentEncoderConfig()),
+			w, zapcore.DebugLevel)
+		cores = append(cores, c)
+		it.deferCleanup(func() {
+			it.logger.Debug("closing logs")
+			closeLogs()
+		})
+	}
+
+	it.logger = zap.New(zapcore.NewTee(cores...))
 }
 
 // deferCleanup registers a cleanup function that is called when Cleanup is called on the IT object. The caller must
@@ -85,7 +119,7 @@ func (it *IT) MysqlServer() services.MysqlServer {
 	defer it.mutex.Unlock()
 
 	if it.mysqlServer == nil {
-		it.mysqlServer = services.NewMysqlDocker(it.DockerClient(), it.prefix+"-mysql", it.DockerNetworkId())
+		it.mysqlServer = services.NewMysqlDocker(it.logger, it.DockerClient(), it.prefix+"-mysql", it.DockerNetworkId())
 		it.deferCleanup(it.mysqlServer.Cleanup)
 	}
 
@@ -101,7 +135,7 @@ func (it *IT) Redis() services.Redis {
 	defer it.mutex.Unlock()
 
 	if it.redis == nil {
-		it.redis = services.NewRedisDocker(it.DockerClient(), it.prefix+"-redis", it.DockerNetworkId())
+		it.redis = services.NewRedisDocker(it.logger, it.DockerClient(), it.prefix+"-redis", it.DockerNetworkId())
 		it.deferCleanup(it.redis.Cleanup)
 	}
 
@@ -117,7 +151,7 @@ func (it *IT) Icinga2() services.Icinga2 {
 	defer it.mutex.Unlock()
 
 	if it.icinga2 == nil {
-		it.icinga2 = services.NewIcinga2Docker(it.DockerClient(), it.prefix+"-icinga2", it.DockerNetworkId())
+		it.icinga2 = services.NewIcinga2Docker(it.logger, it.DockerClient(), it.prefix+"-icinga2", it.DockerNetworkId())
 		it.deferCleanup(it.icinga2.Cleanup)
 	}
 
@@ -139,7 +173,8 @@ func (it *IT) IcingaDb() services.IcingaDb {
 	defer it.mutex.Unlock()
 
 	if it.icingaDb == nil {
-		it.icingaDb = services.NewIcingaDbDockerBinary(it.DockerClient(), it.prefix+"-icingadb", it.DockerNetworkId(), path)
+		it.icingaDb = services.NewIcingaDbDockerBinary(it.logger, it.DockerClient(), it.prefix+"-icingadb",
+			it.DockerNetworkId(), path)
 		it.deferCleanup(it.icingaDb.Cleanup)
 	}
 

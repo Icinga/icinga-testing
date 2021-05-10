@@ -7,19 +7,23 @@ import (
 	"github.com/docker/docker/api/types/network"
 	"github.com/docker/docker/client"
 	"github.com/icinga/icinga-testing/utils"
-	"log"
+	"go.uber.org/zap"
 	"time"
 )
 
 type MysqlDocker struct {
 	*mysqlServerWithRootCreds
-	client      *client.Client
-	containerId string
+	logger        *zap.Logger
+	client        *client.Client
+	containerId   string
+	containerName string
 }
 
 var _ MysqlServer = (*MysqlDocker)(nil)
 
-func NewMysqlDocker(dockerClient *client.Client, containerName string, dockerNetworkId string) *MysqlDocker {
+func NewMysqlDocker(logger *zap.Logger, dockerClient *client.Client, containerName string, dockerNetworkId string) *MysqlDocker {
+	logger = logger.With(zap.Bool("mysql", true))
+
 	networkName := "net"
 	rootPassword := utils.RandomString(16)
 	cont, err := dockerClient.ContainerCreate(context.Background(), &container.Config{
@@ -36,28 +40,47 @@ func NewMysqlDocker(dockerClient *client.Client, containerName string, dockerNet
 		},
 	}, nil, containerName)
 	if err != nil {
-		panic(err)
+		logger.Fatal("failed to create mysql container",
+			zap.String("name", containerName),
+			zap.Error(err))
 	}
-	log.Printf("created mysql container: %s", cont.ID)
+	logger.Debug("created mysql container",
+		zap.String("name", containerName),
+		zap.String("id", cont.ID))
 
 	err = utils.ForwardDockerContainerOutput(context.Background(), dockerClient, cont.ID,
-		false, utils.NewLogWriter(containerName))
+		false, utils.NewLineWriter(func(line []byte) {
+			logger.Debug("container output",
+				zap.String("name", containerName),
+				zap.String("id", cont.ID),
+				zap.ByteString("line", line))
+		}))
 	if err != nil {
-		panic(err)
+		logger.Fatal("failed to attach to container output",
+			zap.String("name", containerName),
+			zap.String("id", cont.ID),
+			zap.Error(err))
 	}
 
 	err = dockerClient.ContainerStart(context.Background(), cont.ID, types.ContainerStartOptions{})
 	if err != nil {
-		panic(err)
+		logger.Fatal("failed to start container",
+			zap.String("name", containerName),
+			zap.String("id", cont.ID),
+			zap.Error(err))
 	}
-	log.Printf("started mysql container: %s", cont.ID)
+	logger.Debug("started mysql container",
+		zap.String("name", containerName),
+		zap.String("id", cont.ID))
 
 	containerAddress := utils.MustString(utils.DockerContainerAddress(context.Background(), dockerClient, cont.ID))
 
 	d := &MysqlDocker{
 		mysqlServerWithRootCreds: NewMysqlServerWithRootCreds(containerAddress, "3306", "root", rootPassword),
+		logger:                   logger,
 		client:                   dockerClient,
 		containerId:              cont.ID,
+		containerName:            containerName,
 	}
 
 	for attempt := 1; ; attempt++ {
@@ -66,7 +89,10 @@ func NewMysqlDocker(dockerClient *client.Client, containerName string, dockerNet
 		if err == nil {
 			break
 		} else if attempt == 20 {
-			panic(err)
+			logger.Fatal("mysql failed to start in time",
+				zap.String("name", containerName),
+				zap.String("id", cont.ID),
+				zap.Error(err))
 		}
 	}
 
@@ -79,7 +105,13 @@ func (m *MysqlDocker) Cleanup() {
 		RemoveVolumes: true,
 	})
 	if err != nil {
-		panic(err)
+		m.logger.Error("failed to remove mysql container",
+			zap.String("name", m.containerName),
+			zap.String("id", m.containerId),
+			zap.Error(err))
+	} else {
+		m.logger.Debug("removed mysql container",
+			zap.String("name", m.containerName),
+			zap.String("id", m.containerId))
 	}
-	log.Printf("removed mysql container: %s", m.containerId)
 }
