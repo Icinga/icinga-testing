@@ -125,6 +125,13 @@ func (it *IT) MysqlDatabase() services.MysqlDatabase {
 	return it.getMysqlServer().Database()
 }
 
+// MysqlDatabaseT creates a new MySQL database and registers its cleanup function with testing.T.
+func (it *IT) MysqlDatabaseT(t *testing.T) services.MysqlDatabase {
+	m := it.MysqlDatabase()
+	t.Cleanup(m.Cleanup)
+	return m
+}
+
 func (it *IT) getRedis() services.Redis {
 	it.mutex.Lock()
 	defer it.mutex.Unlock()
@@ -141,6 +148,13 @@ func (it *IT) RedisServer() services.RedisServer {
 	return it.getRedis().Server()
 }
 
+// RedisServerT creates a new Redis server and registers its cleanup function with testing.T.
+func (it *IT) RedisServerT(t *testing.T) services.RedisServer {
+	r := it.RedisServer()
+	t.Cleanup(r.Cleanup)
+	return r
+}
+
 func (it *IT) getIcinga2() services.Icinga2 {
 	it.mutex.Lock()
 	defer it.mutex.Unlock()
@@ -155,6 +169,13 @@ func (it *IT) getIcinga2() services.Icinga2 {
 
 func (it *IT) Icinga2Node(name string) services.Icinga2Node {
 	return it.getIcinga2().Node(name)
+}
+
+// Icinga2NodeT creates a new Icinga 2 node and registers its cleanup function with testing.T.
+func (it *IT) Icinga2NodeT(t *testing.T, name string) services.Icinga2Node {
+	n := it.Icinga2Node(name)
+	t.Cleanup(n.Cleanup)
+	return n
 }
 
 func (it *IT) getIcingaDb() services.IcingaDb {
@@ -178,6 +199,15 @@ func (it *IT) getIcingaDb() services.IcingaDb {
 
 func (it *IT) IcingaDbInstance(redis services.RedisServer, mysql services.MysqlDatabase) services.IcingaDbInstance {
 	return it.getIcingaDb().Instance(redis, mysql)
+}
+
+// IcingaDbInstanceT creates a new Icinga DB instance and registers its cleanup function with testing.T.
+func (it *IT) IcingaDbInstanceT(
+	t *testing.T, redis services.RedisServer, mysql services.MysqlDatabase,
+) services.IcingaDbInstance {
+	i := it.IcingaDbInstance(redis, mysql)
+	t.Cleanup(i.Cleanup)
+	return i
 }
 
 // Logger returns a *zap.Logger which additionally logs the current test case name.
