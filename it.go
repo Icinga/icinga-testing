@@ -75,7 +75,7 @@ func (it *IT) setupLogging() {
 	if *flagDebugLog != "" {
 		w, closeLogs, err := zap.Open(*flagDebugLog)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "failed to open debug log %q: %v", *flagDebugLog, err)
+			panic(fmt.Errorf("failed to open debug log %q: %w", *flagDebugLog, err))
 		}
 		c := zapcore.NewCore(zapcore.NewJSONEncoder(zap.NewDevelopmentEncoderConfig()),
 			w, zapcore.DebugLevel)
