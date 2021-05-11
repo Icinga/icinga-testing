@@ -212,7 +212,7 @@ func (it *IT) IcingaDbInstanceT(
 
 // Logger returns a *zap.Logger which additionally logs the current test case name.
 func (it *IT) Logger(t *testing.T) *zap.Logger {
-	cores := []zapcore.Core{zaptest.NewLogger(t).Core()}
+	cores := []zapcore.Core{zaptest.NewLogger(t, zaptest.WrapOptions(zap.IncreaseLevel(zap.InfoLevel))).Core()}
 	if it.loggerDebugCore != nil {
 		cores = append(cores, it.loggerDebugCore)
 	}
