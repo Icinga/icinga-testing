@@ -10,8 +10,10 @@ import (
 	"github.com/icinga/icinga-testing/utils"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
+	"go.uber.org/zap/zaptest"
 	"os"
 	"sync"
+	"testing"
 )
 
 type IT struct {
@@ -25,6 +27,7 @@ type IT struct {
 	icinga2         services.Icinga2
 	icingaDb        services.IcingaDb
 	logger          *zap.Logger
+	loggerDebugCore zapcore.Core
 }
 
 var flagDebugLog = flag.String("icingatesting.debuglog", "", "file to write debug log to")
@@ -77,9 +80,9 @@ func (it *IT) setupLogging() {
 		if err != nil {
 			panic(fmt.Errorf("failed to open debug log %q: %w", *flagDebugLog, err))
 		}
-		c := zapcore.NewCore(zapcore.NewJSONEncoder(zap.NewDevelopmentEncoderConfig()),
+		it.loggerDebugCore = zapcore.NewCore(zapcore.NewJSONEncoder(zap.NewDevelopmentEncoderConfig()),
 			w, zapcore.DebugLevel)
-		cores = append(cores, c)
+		cores = append(cores, it.loggerDebugCore)
 		it.deferCleanup(func() {
 			it.logger.Debug("closing logs")
 			closeLogs()
@@ -175,4 +178,13 @@ func (it *IT) getIcingaDb() services.IcingaDb {
 
 func (it *IT) IcingaDbInstance(redis services.RedisServer, mysql services.MysqlDatabase) services.IcingaDbInstance {
 	return it.getIcingaDb().Instance(redis, mysql)
+}
+
+// Logger returns a *zap.Logger which additionally logs the current test case name.
+func (it *IT) Logger(t *testing.T) *zap.Logger {
+	cores := []zapcore.Core{zaptest.NewLogger(t).Core()}
+	if it.loggerDebugCore != nil {
+		cores = append(cores, it.loggerDebugCore)
+	}
+	return zap.New(zapcore.NewTee(cores...)).With(zap.String("testcase", t.Name()))
 }
