@@ -2,10 +2,9 @@ package services
 
 import (
 	"bytes"
-	"crypto/tls"
 	_ "embed"
 	"fmt"
-	"net/http"
+	"github.com/icinga/icinga-testing/utils"
 	"text/template"
 )
 
@@ -36,22 +35,9 @@ func (r *icinga2NodeInfo) Port() string {
 	return r.port
 }
 
-func Icinga2NodeApiClient(n Icinga2Node) *http.Client {
-	return &http.Client{
-		Transport: &icinga2NodeApiHttpTransport{
-			host:     n.Host() + ":" + n.Port(),
-			username: "root", // TODO(jb)
-			password: "root", // TODO(jb)
-			wrappedTransport: &http.Transport{
-				TLSClientConfig: &tls.Config{
-					// TODO(jb): certificate validation
-					InsecureSkipVerify: true,
-					//ServerName: ...,
-					//RootCAs:    ...,
-				},
-			},
-		},
-	}
+func Icinga2NodeApiClient(n Icinga2Node) *utils.Icinga2Client {
+	// TODO: API credentials
+	return utils.NewIcinga2Client(n.Host()+":"+n.Port(), "root", "root")
 }
 
 // Icinga2NodePing tries to connect to the API port of an Icinga 2 instance to see if it is running.
@@ -77,19 +63,4 @@ func Icinga2NodeWriteIcingaDbConf(n Icinga2Node, r RedisServer) {
 		panic(err)
 	}
 	n.WriteConfig("etc/icinga2/features-available/icingadb.conf", b.Bytes())
-}
-
-type icinga2NodeApiHttpTransport struct {
-	host             string
-	username         string
-	password         string
-	wrappedTransport http.RoundTripper
-}
-
-func (t *icinga2NodeApiHttpTransport) RoundTrip(req *http.Request) (*http.Response, error) {
-	req.Host = t.host
-	req.URL.Host = t.host
-	req.URL.Scheme = "https"
-	req.SetBasicAuth(t.username, t.password)
-	return t.wrappedTransport.RoundTrip(req)
 }
