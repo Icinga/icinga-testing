@@ -30,7 +30,10 @@ func MakeVariants(base interface{}) *variants {
 	if value.Type().Kind() != reflect.Struct {
 		panic("base must be of some struct type")
 	}
-	return &variants{base: value}
+	return &variants{
+		base:   value,
+		result: []interface{}{base},
+	}
 }
 
 func (v *variants) Vary(field string, values ...interface{}) *variants {
@@ -39,7 +42,7 @@ func (v *variants) Vary(field string, values ...interface{}) *variants {
 		elem.Set(v.base)                                    // elem = base
 		elem.FieldByName(field).Set(reflect.ValueOf(value)) // elem.Field = value
 		if e, ok := elem.Addr().Interface().(VariantInfoSetter); ok {
-			e.SetVariantInfo(field, i, value)
+			e.SetVariantInfo(field, i+1, value)
 		}
 		v.result = append(v.result, elem.Interface())
 	}
