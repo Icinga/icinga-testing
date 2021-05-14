@@ -9,6 +9,22 @@ type variants struct {
 	result []interface{}
 }
 
+type VariantInfo struct {
+	Field string
+	Index int
+	Value interface{}
+}
+
+type VariantInfoSetter interface {
+	SetVariantInfo(field string, index int, value interface{})
+}
+
+func (v *VariantInfo) SetVariantInfo(field string, index int, value interface{}) {
+	v.Field = field
+	v.Index = index
+	v.Value = value
+}
+
 func MakeVariants(base interface{}) *variants {
 	value := reflect.ValueOf(base)
 	if value.Type().Kind() != reflect.Struct {
@@ -18,10 +34,13 @@ func MakeVariants(base interface{}) *variants {
 }
 
 func (v *variants) Vary(field string, values ...interface{}) *variants {
-	for _, value := range values {
+	for i, value := range values {
 		elem := reflect.New(v.base.Type()).Elem()           // elem := structType{}
 		elem.Set(v.base)                                    // elem = base
 		elem.FieldByName(field).Set(reflect.ValueOf(value)) // elem.Field = value
+		if e, ok := elem.Addr().Interface().(VariantInfoSetter); ok {
+			e.SetVariantInfo(field, i, value)
+		}
 		v.result = append(v.result, elem.Interface())
 	}
 	return v
