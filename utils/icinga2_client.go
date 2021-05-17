@@ -77,54 +77,63 @@ func (c *Icinga2Client) DeleteJson(url string) (*http.Response, error) {
 	return c.Do(req)
 }
 
-func (c *Icinga2Client) CreateHost(t *testing.T, name string, body interface{}) {
-	if body == nil {
-		body = map[string]interface{}{
-			"attrs": map[string]interface{}{
-				"check_command":  "dummy",
-			},
-		}
-	}
+func (c *Icinga2Client) CreateObject(t *testing.T, typ string, name string, body interface{}) {
 	bodyJson, err := json.Marshal(body)
 	require.NoError(t, err, "json.Marshal() should succeed")
-	res, err := c.PutJson("/v1/objects/hosts/"+name, bytes.NewBuffer(bodyJson))
-	require.NoErrorf(t, err, "PUT request for host %s should succeed", name)
-	require.Equalf(t, http.StatusOK, res.StatusCode, "PUT for host %s should return OK", name)
+	url := "/v1/objects/" + typ + "/" + name
+	res, err := c.PutJson(url, bytes.NewBuffer(bodyJson))
+	require.NoErrorf(t, err, "PUT request for %s should succeed", url)
+	require.Equalf(t, http.StatusOK, res.StatusCode, "PUT request for %s should return OK", url)
 }
 
-func (c *Icinga2Client) DeleteHost(t *testing.T, name string, cascade bool) {
+func (c *Icinga2Client) UpdateObject(t *testing.T, typ string, name string, body interface{}) {
+	bodyJson, err := json.Marshal(body)
+	require.NoError(t, err, "json.Marshal() should succeed")
+	url := "/v1/objects/" + typ + "/" + name
+	res, err := c.PostJson(url, bytes.NewBuffer(bodyJson))
+	require.NoErrorf(t, err, "POST request for %s should succeed", url)
+	require.Equalf(t, http.StatusOK, res.StatusCode, "POST request for %s should return OK", url)
+}
+
+func (c *Icinga2Client) DeleteObject(t *testing.T, typ string, name string, cascade bool) {
 	params := ""
 	if cascade {
 		params = "?cascade=1"
 	}
-	res, err := c.DeleteJson("/v1/objects/hosts/" + name + params)
-	require.NoErrorf(t, err, "DELETE request for host %s should succeed", name)
-	require.Equalf(t, http.StatusOK, res.StatusCode, "DELETE for host %s should return OK", name)
+	url := "/v1/objects/" + typ + "/" + name + params
+	res, err := c.DeleteJson(url)
+	require.NoErrorf(t, err, "DELETE request for %s should succeed", url)
+	require.Equalf(t, http.StatusOK, res.StatusCode, "DELETE request for %s should return OK", url)
+}
+
+func (c *Icinga2Client) CreateHost(t *testing.T, name string, body interface{}) {
+	if body == nil {
+		body = map[string]interface{}{
+			"attrs": map[string]interface{}{
+				"check_command": "dummy",
+			},
+		}
+	}
+	c.CreateObject(t, "hosts", name, body)
+}
+
+func (c *Icinga2Client) DeleteHost(t *testing.T, name string, cascade bool) {
+	c.DeleteObject(t, "hosts", name, cascade)
 }
 
 func (c *Icinga2Client) CreateService(t *testing.T, host string, service string, body interface{}) {
 	if body == nil {
 		body = map[string]interface{}{
 			"attrs": map[string]interface{}{
-				"check_command":  "dummy",
+				"check_command": "dummy",
 			},
 		}
 	}
-	bodyJson, err := json.Marshal(body)
-	require.NoError(t, err, "json.Marshal() should succeed")
-	res, err := c.PutJson("/v1/objects/services/"+host+"!"+service, bytes.NewBuffer(bodyJson))
-	require.NoErrorf(t, err, "PUT request for service %s!%s should succeed", host, service)
-	require.Equalf(t, http.StatusOK, res.StatusCode, "PUT for service %s!%s should return OK", host, service)
+	c.CreateObject(t, "services", host+"!"+service, body)
 }
 
 func (c *Icinga2Client) DeleteService(t *testing.T, host string, service string, cascade bool) {
-	params := ""
-	if cascade {
-		params = "?cascade=1"
-	}
-	res, err := c.DeleteJson("/v1/objects/services/" + host + "!" + service + params)
-	require.NoErrorf(t, err, "DELETE for service %s!%s should succeed", host, service)
-	require.Equalf(t, http.StatusOK, res.StatusCode, "DELETE for service %s!%s should return OK", host, service)
+	c.DeleteObject(t, "services", host+"!"+service, cascade)
 }
 
 type icinga2ClientHttpTransport struct {
