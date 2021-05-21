@@ -45,8 +45,8 @@ func IcingaDbInstanceWriteConfig(i IcingaDbInstance, w io.Writer) error {
 //go:embed icingadb_mysql_schema.sql
 var icingadbMysqlSchema string
 
-func IcingaDbInstanceImportSchema(i IcingaDbInstance) {
-	db, err := MysqlDatabaseOpen(i.Mysql())
+func IcingaDbInstanceImportSchema(m MysqlDatabase) {
+	db, err := MysqlDatabaseOpen(m)
 	if err != nil {
 		panic(err)
 	}
