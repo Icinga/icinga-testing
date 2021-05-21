@@ -65,7 +65,7 @@ func (i *icingaDbDockerBinary) Instance(redis RedisServer, mysql MysqlDatabase) 
 	if err != nil {
 		panic(err)
 	}
-	IcingaDbInstanceWriteConfig(inst, configFile)
+	err = IcingaDbInstanceWriteConfig(inst, configFile)
 	if err != nil {
 		panic(err)
 	}
