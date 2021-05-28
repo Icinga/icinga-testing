@@ -72,8 +72,8 @@ func ForwardDockerContainerOutput(
 	return nil
 }
 
-// DockerExec runs a command in a container, forwards its output to a logger and waits for the command to complete
-// with exit code 0.
+// DockerExec runs a command in a container, forwards its stdin/stdout/stderr to/from the reader/writers passed as
+// arguments and waits for the command to complete with exit code 0.
 func DockerExec(
 	ctx context.Context, client *client.Client, logger *zap.Logger, containerId string,
 	cmd []string, stdin io.Reader, stdout io.Writer, stderr io.Writer,
@@ -156,20 +156,16 @@ func DockerExec(
 		return err
 	}
 
-	//for {
 	inspect, err := client.ContainerExecInspect(ctx, exec.ID)
 	if err != nil {
 		return err
 	}
-	if !inspect.Running {
-		if inspect.ExitCode != 0 {
-			return fmt.Errorf("command exited with code %d", inspect.ExitCode)
-		} else {
-			return nil
-		}
-	} else {
+	if inspect.Running {
 		panic("command should no longer be running")
 	}
-	//	time.Sleep(25 * time.Millisecond)
-	//}
+	if inspect.ExitCode != 0 {
+		return fmt.Errorf("command exited with code %d", inspect.ExitCode)
+	}
+
+	return nil
 }
