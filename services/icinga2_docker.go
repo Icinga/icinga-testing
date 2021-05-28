@@ -1,6 +1,7 @@
 package services
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"github.com/docker/docker/api/types"
@@ -9,7 +10,6 @@ import (
 	"github.com/docker/docker/client"
 	"github.com/icinga/icinga-testing/utils"
 	"go.uber.org/zap"
-	"io"
 	"sync"
 	"time"
 )
@@ -139,65 +139,29 @@ func (n *icinga2DockerNode) Reload() {
 func (n *icinga2DockerNode) WriteConfig(file string, data []byte) {
 	logger := n.logger.With(zap.String("file", file))
 
-	logger.Debug("writing file to container", zap.ByteString("data", data))
-	c := n.icinga2Docker.dockerClient
-	exec, err := c.ContainerExecCreate(context.Background(), n.containerId, types.ExecConfig{
-		Cmd:          []string{"tee", "/" + file},
-		AttachStdin:  true,
-		AttachStderr: true,
-		Detach:       true,
+	stderr := utils.NewLineWriter(func(line []byte) {
+		logger.Error("error from container while writing file", zap.ByteString("line", line))
 	})
-	if err != nil {
-		logger.Fatal("failed to create container exec", zap.Error(err))
-	}
-	attach, err := c.ContainerExecAttach(context.Background(), exec.ID, types.ExecStartCheck{})
-	if err != nil {
-		logger.Fatal("failed to attach container exec", zap.Error(err))
-	}
-	_, err = attach.Conn.Write(data)
-	if err != nil {
-		logger.Fatal("failed to write data to container exec", zap.Error(err))
-	}
-	err = attach.CloseWrite()
-	if err != nil {
-		logger.Fatal("failed to close container exec", zap.Error(err))
-	}
-	for {
-		inspect, err := c.ContainerExecInspect(context.Background(), exec.ID)
-		if err != nil {
-			panic(err)
-		}
-		if !inspect.Running {
-			w := utils.NewLineWriter(func(line []byte) {
-				msg := "container output"
-				field := zap.ByteString("line", line)
-				logger.Error(msg, field)
-			})
-			_, err = io.Copy(w, attach.Reader)
-			if err != nil {
-				logger.Fatal("failed to copy container output", zap.Error(err))
-			}
 
-			if inspect.ExitCode != 0 {
-				logger.Fatal("writing file to container failed", zap.Int("exit-code", inspect.ExitCode))
-			} else {
-				return
-			}
-		}
-		time.Sleep(25 * time.Millisecond)
+	err := utils.DockerExec(context.Background(), n.icinga2Docker.dockerClient, n.logger, n.containerId,
+		[]string{"tee", "/" + file}, bytes.NewReader(data), nil, stderr)
+	if err != nil {
+		panic(err)
 	}
 }
 
 func (n *icinga2DockerNode) EnableIcingaDb(redis RedisServer) {
 	Icinga2NodeWriteIcingaDbConf(n, redis)
-	c := n.icinga2Docker.dockerClient
-	exec, err := c.ContainerExecCreate(context.Background(), n.containerId, types.ExecConfig{
-		Cmd: []string{"icinga2", "feature", "enable", "icingadb"},
+
+	stdout := utils.NewLineWriter(func(line []byte) {
+		n.logger.Debug("exec stdout", zap.ByteString("line", line))
 	})
-	if err != nil {
-		panic(err)
-	}
-	err = c.ContainerExecStart(context.Background(), exec.ID, types.ExecStartCheck{})
+	stderr := utils.NewLineWriter(func(line []byte) {
+		n.logger.Error("exec stderr", zap.ByteString("line", line))
+	})
+
+	err := utils.DockerExec(context.Background(), n.icinga2Docker.dockerClient, n.logger, n.containerId,
+		[]string{"icinga2", "feature", "enable", "icingadb"}, nil, stdout, stderr)
 	if err != nil {
 		panic(err)
 	}
