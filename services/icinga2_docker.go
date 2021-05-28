@@ -47,8 +47,14 @@ func (i *icinga2Docker) Node(name string) Icinga2Node {
 		panic(err)
 	}
 
+	dockerImage := "icinga/icinga2:master"
+	err = utils.DockerImagePull(context.Background(), logger, i.dockerClient, dockerImage, false)
+	if err != nil {
+		panic(err)
+	}
+
 	cont, err := i.dockerClient.ContainerCreate(context.Background(), &container.Config{
-		Image: "icinga/icinga2:master",
+		Image: dockerImage,
 		Env:   []string{"ICINGA_MASTER=1"},
 	}, nil, &network.NetworkingConfig{
 		EndpointsConfig: map[string]*network.EndpointSettings{

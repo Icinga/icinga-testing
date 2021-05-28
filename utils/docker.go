@@ -169,3 +169,31 @@ func DockerExec(
 
 	return nil
 }
+
+// DockerImagePull pulls an image from the registry. If force=false, no pull is done if the image already exists.
+func DockerImagePull(ctx context.Context, logger *zap.Logger, dockerClient *client.Client, image string, force bool) error {
+	logger = logger.With(zap.String("docker-image", image))
+
+	if !force {
+		_, _, err := dockerClient.ImageInspectWithRaw(ctx, image)
+		if err == nil {
+			return nil // image exists, no need to pull
+		} else if !client.IsErrNotFound(err) {
+			return err
+		}
+	}
+
+	pull, err := dockerClient.ImagePull(ctx, image, types.ImagePullOptions{})
+	if err != nil {
+		return err
+	}
+
+	_, err = io.Copy(NewLineWriter(func(line []byte) {
+		logger.Debug("docker pull", zap.ByteString("line", line))
+	}), pull)
+	if err != nil {
+		return err
+	}
+
+	return pull.Close()
+}

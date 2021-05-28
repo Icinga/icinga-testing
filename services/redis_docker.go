@@ -48,8 +48,14 @@ func (r *redisDocker) Server() RedisServer {
 		panic(err)
 	}
 
+	dockerImage := "redis:latest"
+	err = utils.DockerImagePull(context.Background(), logger, r.dockerClient, dockerImage, false)
+	if err != nil {
+		panic(err)
+	}
+
 	cont, err := r.dockerClient.ContainerCreate(context.Background(), &container.Config{
-		Image: "redis:latest",
+		Image: dockerImage,
 	}, nil, &network.NetworkingConfig{
 		EndpointsConfig: map[string]*network.EndpointSettings{
 			networkName: {

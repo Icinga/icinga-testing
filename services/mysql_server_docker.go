@@ -32,12 +32,19 @@ func NewMysqlDocker(logger *zap.Logger, dockerClient *client.Client, containerNa
 		panic(err)
 	}
 
+
+	dockerImage := "mysql:latest"
+	err = utils.DockerImagePull(context.Background(), logger, dockerClient, dockerImage, false)
+	if err != nil {
+		panic(err)
+	}
+
 	rootPassword := utils.RandomString(16)
 	cont, err := dockerClient.ContainerCreate(context.Background(), &container.Config{
 		ExposedPorts: nil,
 		Env:          []string{"MYSQL_ROOT_PASSWORD=" + rootPassword},
 		Cmd:          nil,
-		Image:        "mysql:latest",
+		Image:        dockerImage,
 	}, nil, &network.NetworkingConfig{
 		EndpointsConfig: map[string]*network.EndpointSettings{
 			networkName: {

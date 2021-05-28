@@ -82,8 +82,14 @@ func (i *icingaDbDockerBinary) Instance(redis RedisServer, mysql MysqlDatabase) 
 		panic(err)
 	}
 
+	dockerImage := "alpine:latest"
+	err = utils.DockerImagePull(context.Background(), inst.logger, i.dockerClient, dockerImage, false)
+	if err != nil {
+		panic(err)
+	}
+
 	cont, err := i.dockerClient.ContainerCreate(context.Background(), &container.Config{
-		Image: "alpine:latest",
+		Image: dockerImage,
 		Cmd:   []string{"/icingadb", "--config", "/icingadb.yml"},
 	}, &container.HostConfig{
 		Mounts: []mount.Mount{{
