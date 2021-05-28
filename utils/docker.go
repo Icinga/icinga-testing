@@ -27,7 +27,7 @@ func DockerContainerAddress(ctx context.Context, client *client.Client, id strin
 }
 
 func DockerNetworkName(ctx context.Context, client *client.Client, id string) (string, error) {
-	net, err := client.NetworkInspect(context.Background(), id, types.NetworkInspectOptions{})
+	net, err := client.NetworkInspect(ctx, id, types.NetworkInspectOptions{})
 	if err != nil {
 		return "", err
 	}
