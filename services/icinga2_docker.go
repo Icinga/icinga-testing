@@ -11,6 +11,7 @@ import (
 	"github.com/icinga/icinga-testing/utils"
 	"go.uber.org/zap"
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
@@ -19,6 +20,7 @@ type icinga2Docker struct {
 	dockerClient        *client.Client
 	dockerNetworkId     string
 	containerNamePrefix string
+	containerCounter    uint32
 
 	runningMutex sync.Mutex
 	running      map[*icinga2DockerNode]struct{}
@@ -37,7 +39,7 @@ func NewIcinga2Docker(logger *zap.Logger, dockerClient *client.Client, container
 }
 
 func (i *icinga2Docker) Node(name string) Icinga2Node {
-	containerName := fmt.Sprintf("%s-%s", i.containerNamePrefix, name)
+	containerName := fmt.Sprintf("%s-%d-%s", i.containerNamePrefix, atomic.AddUint32(&i.containerCounter, 1), name)
 	logger := i.logger.With(zap.String("container-name", containerName))
 
 	networkName, err := utils.DockerNetworkName(context.Background(), i.dockerClient, i.dockerNetworkId)
