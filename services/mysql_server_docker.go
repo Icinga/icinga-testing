@@ -89,7 +89,7 @@ func NewMysqlDocker(logger *zap.Logger, dockerClient *client.Client, containerNa
 		err := d.mysqlServerWithRootCreds.db.Ping()
 		if err == nil {
 			break
-		} else if attempt == 20 {
+		} else if attempt == 60 {
 			logger.Fatal("mysql failed to start in time", zap.Error(err))
 		}
 	}
