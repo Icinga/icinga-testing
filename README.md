@@ -7,7 +7,9 @@
 This repository contains helpers to facilitate performing integration tests between components of the Icinga stack using
 the [Go `testing` package](https://pkg.go.dev/testing). The general idea is to write test cases in Go that can
 dynamically spawn individual components as required, connect them and then perform checks on this setup. This is
-currently implemented by using the Docker API to start and stop containers locally as required by the tests.
+currently implemented by using the Docker API to start and stop containers locally as required by the tests. For more
+information on how to use it, have a look at
+the [inline documentation comments](https://pkg.go.dev/github.com/icinga/icinga-testing).
 
 ## License
 

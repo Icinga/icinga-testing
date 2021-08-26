@@ -6,8 +6,13 @@ import (
 )
 
 type RedisServer interface {
+	// Host returns the host for connecting to this Redis server.
 	Host() string
+
+	// Port returns the port for connecting to this Redis server.
 	Port() string
+
+	// Cleanup stops and removes this Redis server.
 	Cleanup()
 }
 

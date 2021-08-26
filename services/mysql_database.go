@@ -7,11 +7,22 @@ import (
 )
 
 type MysqlDatabase interface {
+	// Host returns the host for connecting to this database.
 	Host() string
+
+	// Port returns the port for connecting to this database.
 	Port() string
+
+	// Username returns the username for connecting to this database.
 	Username() string
+
+	// Password returns the password for connecting to the database.
 	Password() string
+
+	// Database returns the name of the database on the MySQL server.
 	Database() string
+
+	// Cleanup removes the MySQL database.
 	Cleanup()
 }
 

@@ -14,11 +14,26 @@ type Icinga2 interface {
 }
 
 type Icinga2Node interface {
+	// Host returns the host on which the Icinga 2 API can be reached.
 	Host() string
+
+	// Port return the port on which the Icinga 2 API can be reached.
 	Port() string
+
+	// Reload sends a reload signal to the Icinga 2 node.
 	Reload()
+
+	// WriteConfig writes a config file to the file system of the Icinga 2 node.
+	//
+	// Example usage:
+	//
+	//   i.WriteConfig("etc/icinga2/conf.d/api-users.conf", []byte("var answer = 42"))
 	WriteConfig(file string, data []byte)
+
+	// EnableIcingaDb enables the icingadb feature on this node using the connection details of redis.
 	EnableIcingaDb(redis RedisServer)
+
+	// Cleanup stops the node and removes everything that was created to start this node.
 	Cleanup()
 }
 

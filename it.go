@@ -16,6 +16,19 @@ import (
 	"testing"
 )
 
+// IT is the core type to start interacting with this module.
+//
+// The intended use is to create a global variable of type *IT in the test package and then initialize it in TestMain
+// to allow the individual Test* functions to make use of it to dynamically start services as required:
+//
+//   var it *icingatesting.IT
+//
+//   func TestMain(m *testing.M) {
+//       it = icingatesting.NewIT()
+//       defer it.Cleanup()
+//
+//       m.Run()
+//    }
 type IT struct {
 	mutex           sync.Mutex
 	deferredCleanup []func()
@@ -32,6 +45,7 @@ type IT struct {
 
 var flagDebugLog = flag.String("icingatesting.debuglog", "", "file to write debug log to")
 
+// NewIT allocates a new IT instance and initializes it.
 func NewIT() *IT {
 	flag.Parse()
 
@@ -99,6 +113,7 @@ func (it *IT) deferCleanup(f func()) {
 	it.deferredCleanup = append(it.deferredCleanup, f)
 }
 
+// Cleanup tears down everything that was started during the tests by this IT instance.
 func (it *IT) Cleanup() {
 	it.mutex.Lock()
 	defer it.mutex.Unlock()
@@ -121,6 +136,10 @@ func (it *IT) getMysqlServer() services.MysqlServer {
 	return it.mysqlServer
 }
 
+// MysqlDatabase creates a new MySQL database and a user to access it.
+//
+// The IT object will start a single MySQL Docker container on demand using the mysql:latest image and then creates
+// multiple databases in it.
 func (it *IT) MysqlDatabase() services.MysqlDatabase {
 	return it.getMysqlServer().Database()
 }
@@ -144,6 +163,9 @@ func (it *IT) getRedis() services.Redis {
 	return it.redis
 }
 
+// RedisServer creates a new Redis server.
+//
+// Each call to this function will spawn a dedicated Redis Docker container using the redis:latest image.
 func (it *IT) RedisServer() services.RedisServer {
 	return it.getRedis().Server()
 }
@@ -167,6 +189,9 @@ func (it *IT) getIcinga2() services.Icinga2 {
 	return it.icinga2
 }
 
+// Icinga2Node creates a new Icinga 2 node.
+//
+// Each call to this function will spawn a dedicated Icinga 2 Docker container using the icinga/icinga2:master image.
 func (it *IT) Icinga2Node(name string) services.Icinga2Node {
 	return it.getIcinga2().Node(name)
 }
@@ -197,6 +222,10 @@ func (it *IT) getIcingaDb() services.IcingaDb {
 	return it.icingaDb
 }
 
+// IcingaDbInstance starts a new Icinga DB instance.
+//
+// It expects the ICINGA_TESTING_ICINGADB_BINARY environment variable to be set to the path of a precompiled icingadb
+// binary which is then started in a new Docker container when this function is called.
 func (it *IT) IcingaDbInstance(redis services.RedisServer, mysql services.MysqlDatabase) services.IcingaDbInstance {
 	return it.getIcingaDb().Instance(redis, mysql)
 }

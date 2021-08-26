@@ -17,8 +17,13 @@ type IcingaDb interface {
 }
 
 type IcingaDbInstance interface {
+	// Redis returns the instance information of the Redis server this instance is using.
 	Redis() RedisServer
+
+	// Mysql returns the instance information of the MySQL database this instance is using.
 	Mysql() MysqlDatabase
+
+	// Cleanup stops the instance and removes everything that was created to start it.
 	Cleanup()
 }
 
