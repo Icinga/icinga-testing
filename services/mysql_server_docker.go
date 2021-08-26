@@ -32,7 +32,6 @@ func NewMysqlDocker(logger *zap.Logger, dockerClient *client.Client, containerNa
 		panic(err)
 	}
 
-
 	dockerImage := "mysql:latest"
 	err = utils.DockerImagePull(context.Background(), logger, dockerClient, dockerImage, false)
 	if err != nil {
