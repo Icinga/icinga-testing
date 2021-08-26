@@ -51,6 +51,10 @@ func (m *mysqlServerWithRootCreds) Database() MysqlDatabase {
 	if err != nil {
 		panic(err)
 	}
+	_, err = m.db.Exec(fmt.Sprintf("GRANT SESSION_VARIABLES_ADMIN ON *.* TO %s", username))
+	if err != nil {
+		panic(err)
+	}
 
 	return &mysqlServerWithRootCredsDatabase{
 		mysqlDatabaseInfo: mysqlDatabaseInfo{
