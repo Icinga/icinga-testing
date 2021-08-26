@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"fmt"
 	"reflect"
 )
 
@@ -13,6 +14,14 @@ type VariantInfo struct {
 	Field string
 	Index int
 	Value interface{}
+}
+
+func (v *VariantInfo) VariantInfoString() string {
+	if v != nil && *v != (VariantInfo{}) {
+		return fmt.Sprintf("%s-%d", v.Field, v.Index)
+	} else {
+		return "Base"
+	}
 }
 
 type VariantInfoSetter interface {

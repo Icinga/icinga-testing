@@ -71,3 +71,37 @@ func TestMakeVariantsAsBaseTypeSlice(t *testing.T) {
 		t.Errorf("variants() = %v, want %v", got, want)
 	}
 }
+
+func TestVariantInfoString(t *testing.T) {
+	type T struct {
+		A int
+		B int
+		VariantInfo
+	}
+
+	variants := MakeVariants(T{}).
+		Vary("A", 23, 42).
+		Vary("B", 1337).
+		ResultAsBaseTypeSlice().([]T)
+
+	got := make([]string, 0, len(variants))
+	for _, variant := range variants {
+		got = append(got, variant.VariantInfoString())
+	}
+
+	want := []string{
+		// Base
+		"Base",
+
+		// A: {23, 42}
+		"A-1",
+		"A-2",
+
+		// B: {1337}
+		"B-1",
+	}
+
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("variants() = %v, want %v", got, want)
+	}
+}
