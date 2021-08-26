@@ -13,13 +13,18 @@ func TestMakeVariants(t *testing.T) {
 		X int
 	}
 
-	got := MakeVariants(T{I: -1, B: true, S: "default", X: 1337}).
+	base := T{I: -1, B: true, S: "default", X: 1337}
+
+	got := MakeVariants(base).
 		Vary("I", 23, 42).
 		Vary("B", true, false).
 		Vary("S", "foo", "bar", "baz").
 		Result()
 
 	want := []interface{}{
+		// Base
+		base,
+
 		// I: {23, 42}
 		T{I: 23, B: true, S: "default", X: 1337},
 		T{I: 42, B: true, S: "default", X: 1337},
@@ -51,6 +56,9 @@ func TestMakeVariantsAsBaseTypeSlice(t *testing.T) {
 		ResultAsBaseTypeSlice().([]T)
 
 	want := []T{
+		// Base
+		T{},
+
 		// A: {23, 42}
 		T{A: 23},
 		T{A: 42},
