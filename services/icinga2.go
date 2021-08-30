@@ -8,11 +8,6 @@ import (
 	"text/template"
 )
 
-type Icinga2 interface {
-	Node(name string) Icinga2Node
-	Cleanup()
-}
-
 type Icinga2Node interface {
 	// Host returns the host on which the Icinga 2 API can be reached.
 	Host() string
@@ -35,19 +30,6 @@ type Icinga2Node interface {
 
 	// Cleanup stops the node and removes everything that was created to start this node.
 	Cleanup()
-}
-
-type icinga2NodeInfo struct {
-	host string
-	port string
-}
-
-func (r *icinga2NodeInfo) Host() string {
-	return r.host
-}
-
-func (r *icinga2NodeInfo) Port() string {
-	return r.port
 }
 
 func Icinga2NodeApiClient(n Icinga2Node) *utils.Icinga2Client {

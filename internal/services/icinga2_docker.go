@@ -8,6 +8,7 @@ import (
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/network"
 	"github.com/docker/docker/client"
+	"github.com/icinga/icinga-testing/services"
 	"github.com/icinga/icinga-testing/utils"
 	"go.uber.org/zap"
 	"sync"
@@ -38,7 +39,7 @@ func NewIcinga2Docker(logger *zap.Logger, dockerClient *client.Client, container
 	}
 }
 
-func (i *icinga2Docker) Node(name string) Icinga2Node {
+func (i *icinga2Docker) Node(name string) services.Icinga2Node {
 	containerName := fmt.Sprintf("%s-%d-%s", i.containerNamePrefix, atomic.AddUint32(&i.containerCounter, 1), name)
 	logger := i.logger.With(zap.String("container-name", containerName))
 
@@ -96,7 +97,7 @@ func (i *icinga2Docker) Node(name string) Icinga2Node {
 
 	for attempt := 1; ; attempt++ {
 		time.Sleep(100 * time.Millisecond)
-		err := Icinga2NodePing(n)
+		err := services.Icinga2NodePing(n)
 		if err == nil {
 			break
 		} else if attempt == 100 {
@@ -132,7 +133,7 @@ type icinga2DockerNode struct {
 	containerName string
 }
 
-var _ Icinga2Node = (*icinga2DockerNode)(nil)
+var _ services.Icinga2Node = (*icinga2DockerNode)(nil)
 
 func (n *icinga2DockerNode) Reload() {
 	err := n.icinga2Docker.dockerClient.ContainerKill(context.Background(), n.containerId, "HUP")
@@ -158,8 +159,8 @@ func (n *icinga2DockerNode) WriteConfig(file string, data []byte) {
 	}
 }
 
-func (n *icinga2DockerNode) EnableIcingaDb(redis RedisServer) {
-	Icinga2NodeWriteIcingaDbConf(n, redis)
+func (n *icinga2DockerNode) EnableIcingaDb(redis services.RedisServer) {
+	services.Icinga2NodeWriteIcingaDbConf(n, redis)
 
 	stdout := utils.NewLineWriter(func(line []byte) {
 		n.logger.Debug("exec stdout", zap.ByteString("line", line))

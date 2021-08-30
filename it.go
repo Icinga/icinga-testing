@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/client"
+	internalServices "github.com/icinga/icinga-testing/internal/services"
 	"github.com/icinga/icinga-testing/services"
 	"github.com/icinga/icinga-testing/utils"
 	"go.uber.org/zap"
@@ -35,10 +36,10 @@ type IT struct {
 	prefix          string
 	dockerClient    *client.Client
 	dockerNetworkId string
-	mysqlServer     services.MysqlServer
-	redis           services.Redis
-	icinga2         services.Icinga2
-	icingaDb        services.IcingaDb
+	mysqlServer     internalServices.MysqlServer
+	redis           internalServices.Redis
+	icinga2         internalServices.Icinga2
+	icingaDb        internalServices.IcingaDb
 	logger          *zap.Logger
 	loggerDebugCore zapcore.Core
 }
@@ -124,12 +125,12 @@ func (it *IT) Cleanup() {
 	}
 }
 
-func (it *IT) getMysqlServer() services.MysqlServer {
+func (it *IT) getMysqlServer() internalServices.MysqlServer {
 	it.mutex.Lock()
 	defer it.mutex.Unlock()
 
 	if it.mysqlServer == nil {
-		it.mysqlServer = services.NewMysqlDocker(it.logger, it.dockerClient, it.prefix+"-mysql", it.dockerNetworkId)
+		it.mysqlServer = internalServices.NewMysqlDocker(it.logger, it.dockerClient, it.prefix+"-mysql", it.dockerNetworkId)
 		it.deferCleanup(it.mysqlServer.Cleanup)
 	}
 
@@ -151,12 +152,12 @@ func (it *IT) MysqlDatabaseT(t *testing.T) services.MysqlDatabase {
 	return m
 }
 
-func (it *IT) getRedis() services.Redis {
+func (it *IT) getRedis() internalServices.Redis {
 	it.mutex.Lock()
 	defer it.mutex.Unlock()
 
 	if it.redis == nil {
-		it.redis = services.NewRedisDocker(it.logger, it.dockerClient, it.prefix+"-redis", it.dockerNetworkId)
+		it.redis = internalServices.NewRedisDocker(it.logger, it.dockerClient, it.prefix+"-redis", it.dockerNetworkId)
 		it.deferCleanup(it.redis.Cleanup)
 	}
 
@@ -177,12 +178,12 @@ func (it *IT) RedisServerT(t *testing.T) services.RedisServer {
 	return r
 }
 
-func (it *IT) getIcinga2() services.Icinga2 {
+func (it *IT) getIcinga2() internalServices.Icinga2 {
 	it.mutex.Lock()
 	defer it.mutex.Unlock()
 
 	if it.icinga2 == nil {
-		it.icinga2 = services.NewIcinga2Docker(it.logger, it.dockerClient, it.prefix+"-icinga2", it.dockerNetworkId)
+		it.icinga2 = internalServices.NewIcinga2Docker(it.logger, it.dockerClient, it.prefix+"-icinga2", it.dockerNetworkId)
 		it.deferCleanup(it.icinga2.Cleanup)
 	}
 
@@ -203,7 +204,7 @@ func (it *IT) Icinga2NodeT(t *testing.T, name string) services.Icinga2Node {
 	return n
 }
 
-func (it *IT) getIcingaDb() services.IcingaDb {
+func (it *IT) getIcingaDb() internalServices.IcingaDb {
 	key := "ICINGA_TESTING_ICINGADB_BINARY"
 	path, ok := os.LookupEnv(key)
 	if !ok {
@@ -214,7 +215,7 @@ func (it *IT) getIcingaDb() services.IcingaDb {
 	defer it.mutex.Unlock()
 
 	if it.icingaDb == nil {
-		it.icingaDb = services.NewIcingaDbDockerBinary(it.logger, it.dockerClient, it.prefix+"-icingadb",
+		it.icingaDb = internalServices.NewIcingaDbDockerBinary(it.logger, it.dockerClient, it.prefix+"-icingadb",
 			it.dockerNetworkId, path)
 		it.deferCleanup(it.icingaDb.Cleanup)
 	}

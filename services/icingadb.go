@@ -11,11 +11,6 @@ import (
 	"text/template"
 )
 
-type IcingaDb interface {
-	Instance(redis RedisServer, mysql MysqlDatabase) IcingaDbInstance
-	Cleanup()
-}
-
 type IcingaDbInstance interface {
 	// Redis returns the instance information of the Redis server this instance is using.
 	Redis() RedisServer
@@ -25,19 +20,6 @@ type IcingaDbInstance interface {
 
 	// Cleanup stops the instance and removes everything that was created to start it.
 	Cleanup()
-}
-
-type icingaDbInstanceInfo struct {
-	redis RedisServer
-	mysql MysqlDatabase
-}
-
-func (i *icingaDbInstanceInfo) Redis() RedisServer {
-	return i.redis
-}
-
-func (i *icingaDbInstanceInfo) Mysql() MysqlDatabase {
-	return i.mysql
 }
 
 //go:embed icingadb.yml

@@ -3,6 +3,7 @@ package services
 import (
 	"database/sql"
 	"fmt"
+	"github.com/icinga/icinga-testing/services"
 	"github.com/icinga/icinga-testing/utils"
 	"sync/atomic"
 )
@@ -31,7 +32,7 @@ func NewMysqlServerWithRootCreds(host string, port string, rootUsername string, 
 	}
 }
 
-func (m *mysqlServerWithRootCreds) Database() MysqlDatabase {
+func (m *mysqlServerWithRootCreds) Database() services.MysqlDatabase {
 	id := atomic.AddUint32(&m.counter, 1)
 	username := fmt.Sprintf("u%d", id)
 	password := utils.RandomString(16)
@@ -81,7 +82,7 @@ func (m *mysqlServerWithRootCreds) rootConnection() (*sql.DB, error) {
 		password: m.rootPassword,
 		database: "information_schema",
 	}}
-	return MysqlDatabaseOpen(&d)
+	return services.MysqlDatabaseOpen(&d)
 }
 
 func (d *mysqlServerWithRootCredsDatabase) Cleanup() {

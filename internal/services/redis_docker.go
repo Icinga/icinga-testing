@@ -7,6 +7,7 @@ import (
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/network"
 	"github.com/docker/docker/client"
+	"github.com/icinga/icinga-testing/services"
 	"github.com/icinga/icinga-testing/utils"
 	"go.uber.org/zap"
 	"sync"
@@ -39,7 +40,7 @@ func NewRedisDocker(
 	}
 }
 
-func (r *redisDocker) Server() RedisServer {
+func (r *redisDocker) Server() services.RedisServer {
 	containerName := fmt.Sprintf("%s-%d", r.containerNamePrefix, atomic.AddUint32(&r.containerCounter, 1))
 	logger := r.logger.With(zap.String("container-name", containerName))
 
@@ -95,7 +96,7 @@ func (r *redisDocker) Server() RedisServer {
 		containerId: cont.ID,
 	}
 
-	c := RedisServerOpen(s)
+	c := services.RedisServerOpen(s)
 	for attempt := 1; ; attempt++ {
 		time.Sleep(1 * time.Second)
 		_, err := c.Ping(context.Background()).Result()
@@ -151,4 +152,4 @@ func (s *redisDockerServer) Cleanup() {
 	s.logger.Debug("removed container")
 }
 
-var _ RedisServer = (*redisDockerServer)(nil)
+var _ services.RedisServer = (*redisDockerServer)(nil)
