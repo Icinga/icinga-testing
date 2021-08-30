@@ -97,7 +97,7 @@ func (i *icinga2Docker) Node(name string) services.Icinga2Base {
 
 	for attempt := 1; ; attempt++ {
 		time.Sleep(100 * time.Millisecond)
-		err := services.Icinga2{n}.Ping()
+		err := services.Icinga2{Icinga2Base: n}.Ping()
 		if err == nil {
 			break
 		} else if attempt == 100 {
@@ -160,7 +160,7 @@ func (n *icinga2DockerNode) WriteConfig(file string, data []byte) {
 }
 
 func (n *icinga2DockerNode) EnableIcingaDb(redis services.RedisServerBase) {
-	services.Icinga2{n}.WriteIcingaDbConf(redis)
+	services.Icinga2{Icinga2Base: n}.WriteIcingaDbConf(redis)
 
 	stdout := utils.NewLineWriter(func(line []byte) {
 		n.logger.Debug("exec stdout", zap.ByteString("line", line))

@@ -60,13 +60,13 @@ func (i *icingaDbDockerBinary) Instance(redis services.RedisServerBase, mysql se
 		icingaDbDockerBinary: i,
 	}
 
-	services.MysqlDatabase{mysql}.ImportIcingaDbSchema()
+	services.MysqlDatabase{MysqlDatabaseBase: mysql}.ImportIcingaDbSchema()
 
 	configFile, err := ioutil.TempFile("", "icingadb.yml")
 	if err != nil {
 		panic(err)
 	}
-	err = services.IcingaDb{inst}.WriteConfig(configFile)
+	err = services.IcingaDb{IcingaDbBase: inst}.WriteConfig(configFile)
 	if err != nil {
 		panic(err)
 	}

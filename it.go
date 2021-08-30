@@ -142,7 +142,7 @@ func (it *IT) getMysqlServer() internalServices.MysqlServer {
 // The IT object will start a single MySQL Docker container on demand using the mysql:latest image and then creates
 // multiple databases in it.
 func (it *IT) MysqlDatabase() services.MysqlDatabase {
-	return services.MysqlDatabase{it.getMysqlServer().Database()}
+	return services.MysqlDatabase{MysqlDatabaseBase: it.getMysqlServer().Database()}
 }
 
 // MysqlDatabaseT creates a new MySQL database and registers its cleanup function with testing.T.
@@ -168,7 +168,7 @@ func (it *IT) getRedis() internalServices.Redis {
 //
 // Each call to this function will spawn a dedicated Redis Docker container using the redis:latest image.
 func (it *IT) RedisServer() services.RedisServer {
-	return services.RedisServer{it.getRedis().Server()}
+	return services.RedisServer{RedisServerBase: it.getRedis().Server()}
 }
 
 // RedisServerT creates a new Redis server and registers its cleanup function with testing.T.
@@ -194,7 +194,7 @@ func (it *IT) getIcinga2() internalServices.Icinga2 {
 //
 // Each call to this function will spawn a dedicated Icinga 2 Docker container using the icinga/icinga2:master image.
 func (it *IT) Icinga2Node(name string) services.Icinga2 {
-	return services.Icinga2{it.getIcinga2().Node(name)}
+	return services.Icinga2{Icinga2Base: it.getIcinga2().Node(name)}
 }
 
 // Icinga2NodeT creates a new Icinga 2 node and registers its cleanup function with testing.T.
@@ -228,7 +228,7 @@ func (it *IT) getIcingaDb() internalServices.IcingaDb {
 // It expects the ICINGA_TESTING_ICINGADB_BINARY environment variable to be set to the path of a precompiled icingadb
 // binary which is then started in a new Docker container when this function is called.
 func (it *IT) IcingaDbInstance(redis services.RedisServer, mysql services.MysqlDatabase) services.IcingaDb {
-	return services.IcingaDb{it.getIcingaDb().Instance(redis, mysql)}
+	return services.IcingaDb{IcingaDbBase: it.getIcingaDb().Instance(redis, mysql)}
 }
 
 // IcingaDbInstanceT creates a new Icinga DB instance and registers its cleanup function with testing.T.

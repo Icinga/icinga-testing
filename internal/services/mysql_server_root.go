@@ -82,7 +82,7 @@ func (m *mysqlServerWithRootCreds) rootConnection() (*sql.DB, error) {
 		password: m.rootPassword,
 		database: "information_schema",
 	}}
-	return services.MysqlDatabase{&d}.Open()
+	return services.MysqlDatabase{MysqlDatabaseBase: &d}.Open()
 }
 
 func (d *mysqlServerWithRootCredsDatabase) Cleanup() {

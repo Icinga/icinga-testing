@@ -96,7 +96,7 @@ func (r *redisDocker) Server() services.RedisServerBase {
 		containerId: cont.ID,
 	}
 
-	c := services.RedisServer{s}.Open()
+	c := services.RedisServer{RedisServerBase: s}.Open()
 	for attempt := 1; ; attempt++ {
 		time.Sleep(1 * time.Second)
 		_, err := c.Ping(context.Background()).Result()
