@@ -32,7 +32,7 @@ func NewMysqlServerWithRootCreds(host string, port string, rootUsername string, 
 	}
 }
 
-func (m *mysqlServerWithRootCreds) Database() services.MysqlDatabase {
+func (m *mysqlServerWithRootCreds) Database() services.MysqlDatabaseBase {
 	id := atomic.AddUint32(&m.counter, 1)
 	username := fmt.Sprintf("u%d", id)
 	password := utils.RandomString(16)
@@ -82,7 +82,7 @@ func (m *mysqlServerWithRootCreds) rootConnection() (*sql.DB, error) {
 		password: m.rootPassword,
 		database: "information_schema",
 	}}
-	return services.MysqlDatabaseOpen(&d)
+	return services.MysqlDatabase{&d}.Open()
 }
 
 func (d *mysqlServerWithRootCredsDatabase) Cleanup() {

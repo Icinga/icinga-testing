@@ -8,7 +8,7 @@ import (
 	"text/template"
 )
 
-type Icinga2Node interface {
+type Icinga2Base interface {
 	// Host returns the host on which the Icinga 2 API can be reached.
 	Host() string
 
@@ -26,20 +26,30 @@ type Icinga2Node interface {
 	WriteConfig(file string, data []byte)
 
 	// EnableIcingaDb enables the icingadb feature on this node using the connection details of redis.
-	EnableIcingaDb(redis RedisServer)
+	EnableIcingaDb(redis RedisServerBase)
 
 	// Cleanup stops the node and removes everything that was created to start this node.
 	Cleanup()
 }
 
-func Icinga2NodeApiClient(n Icinga2Node) *utils.Icinga2Client {
-	// TODO: API credentials
-	return utils.NewIcinga2Client(n.Host()+":"+n.Port(), "root", "root")
+// Icinga2 wraps the Icinga2Base interface and adds some more helper functions.
+type Icinga2 struct {
+	Icinga2Base
 }
 
-// Icinga2NodePing tries to connect to the API port of an Icinga 2 instance to see if it is running.
-func Icinga2NodePing(n Icinga2Node) error {
-	response, err := Icinga2NodeApiClient(n).Get("/")
+func (i Icinga2) ApiClient() *utils.Icinga2Client {
+	// TODO: API credentials
+	return utils.NewIcinga2Client(i.Host()+":"+i.Port(), "root", "root")
+}
+
+// Deprecated
+func Icinga2NodeApiClient(n Icinga2Base) *utils.Icinga2Client {
+	return Icinga2{n}.ApiClient()
+}
+
+// Ping tries to connect to the API port of an Icinga 2 instance to see if it is running.
+func (i Icinga2) Ping() error {
+	response, err := i.ApiClient().Get("/")
 	if err != nil {
 		return err
 	}
@@ -53,11 +63,11 @@ func Icinga2NodePing(n Icinga2Node) error {
 var icinga2IcingaDbConfRawTemplate string
 var icinga2IcingaDbConfTemplate = template.Must(template.New("icingadb.conf").Parse(icinga2IcingaDbConfRawTemplate))
 
-func Icinga2NodeWriteIcingaDbConf(n Icinga2Node, r RedisServer) {
+func (i Icinga2) WriteIcingaDbConf(r RedisServerBase) {
 	b := bytes.NewBuffer(nil)
 	err := icinga2IcingaDbConfTemplate.Execute(b, r)
 	if err != nil {
 		panic(err)
 	}
-	n.WriteConfig("etc/icinga2/features-available/icingadb.conf", b.Bytes())
+	i.WriteConfig("etc/icinga2/features-available/icingadb.conf", b.Bytes())
 }

@@ -5,7 +5,7 @@ import (
 	"github.com/icinga/icinga-testing/services"
 )
 
-// mysqlDatabaseInfo serves as a base for implementing the MysqlDatabase interface. Another struct can embed it and
+// mysqlDatabaseInfo serves as a base for implementing the MysqlDatabaseBase interface. Another struct can embed it and
 // initialize it with values to implement all interface functions except Cleanup.
 type mysqlDatabaseInfo struct {
 	host     string
@@ -41,4 +41,4 @@ type mysqlDatabaseNopCleanup struct {
 
 func (_ *mysqlDatabaseNopCleanup) Cleanup() {}
 
-var _ services.MysqlDatabase = (*mysqlDatabaseNopCleanup)(nil)
+var _ services.MysqlDatabaseBase = (*mysqlDatabaseNopCleanup)(nil)

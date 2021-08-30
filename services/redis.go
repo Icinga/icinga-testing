@@ -5,7 +5,7 @@ import (
 	"github.com/go-redis/redis/v8"
 )
 
-type RedisServer interface {
+type RedisServerBase interface {
 	// Host returns the host for connecting to this Redis server.
 	Host() string
 
@@ -16,12 +16,17 @@ type RedisServer interface {
 	Cleanup()
 }
 
-func RedisServerAddress(r RedisServer) string {
+// RedisServer wraps the RedisServerBase interface and adds some helper functions.
+type RedisServer struct {
+	RedisServerBase
+}
+
+func (r RedisServer) Address() string {
 	return fmt.Sprintf("%s:%s", r.Host(), r.Port())
 }
 
-func RedisServerOpen(r RedisServer) *redis.Client {
+func (r RedisServer) Open() *redis.Client {
 	return redis.NewClient(&redis.Options{
-		Addr: RedisServerAddress(r),
+		Addr: r.Address(),
 	})
 }

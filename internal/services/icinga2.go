@@ -6,7 +6,7 @@ import (
 )
 
 type Icinga2 interface {
-	Node(name string) services.Icinga2Node
+	Node(name string) services.Icinga2Base
 	Cleanup()
 }
 

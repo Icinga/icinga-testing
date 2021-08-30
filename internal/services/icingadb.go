@@ -6,19 +6,19 @@ import (
 )
 
 type IcingaDb interface {
-	Instance(redis services.RedisServer, mysql services.MysqlDatabase) services.IcingaDbInstance
+	Instance(redis services.RedisServerBase, mysql services.MysqlDatabaseBase) services.IcingaDbBase
 	Cleanup()
 }
 
 type icingaDbInstanceInfo struct {
-	redis services.RedisServer
-	mysql services.MysqlDatabase
+	redis services.RedisServerBase
+	mysql services.MysqlDatabaseBase
 }
 
-func (i *icingaDbInstanceInfo) Redis() services.RedisServer {
+func (i *icingaDbInstanceInfo) Redis() services.RedisServerBase {
 	return i.redis
 }
 
-func (i *icingaDbInstanceInfo) Mysql() services.MysqlDatabase {
+func (i *icingaDbInstanceInfo) Mysql() services.MysqlDatabaseBase {
 	return i.mysql
 }

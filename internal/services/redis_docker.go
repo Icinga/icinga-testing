@@ -40,7 +40,7 @@ func NewRedisDocker(
 	}
 }
 
-func (r *redisDocker) Server() services.RedisServer {
+func (r *redisDocker) Server() services.RedisServerBase {
 	containerName := fmt.Sprintf("%s-%d", r.containerNamePrefix, atomic.AddUint32(&r.containerCounter, 1))
 	logger := r.logger.With(zap.String("container-name", containerName))
 
@@ -96,7 +96,7 @@ func (r *redisDocker) Server() services.RedisServer {
 		containerId: cont.ID,
 	}
 
-	c := services.RedisServerOpen(s)
+	c := services.RedisServer{s}.Open()
 	for attempt := 1; ; attempt++ {
 		time.Sleep(1 * time.Second)
 		_, err := c.Ping(context.Background()).Result()
@@ -152,4 +152,4 @@ func (s *redisDockerServer) Cleanup() {
 	s.logger.Debug("removed container")
 }
 
-var _ services.RedisServer = (*redisDockerServer)(nil)
+var _ services.RedisServerBase = (*redisDockerServer)(nil)

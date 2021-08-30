@@ -142,7 +142,7 @@ func (it *IT) getMysqlServer() internalServices.MysqlServer {
 // The IT object will start a single MySQL Docker container on demand using the mysql:latest image and then creates
 // multiple databases in it.
 func (it *IT) MysqlDatabase() services.MysqlDatabase {
-	return it.getMysqlServer().Database()
+	return services.MysqlDatabase{it.getMysqlServer().Database()}
 }
 
 // MysqlDatabaseT creates a new MySQL database and registers its cleanup function with testing.T.
@@ -168,7 +168,7 @@ func (it *IT) getRedis() internalServices.Redis {
 //
 // Each call to this function will spawn a dedicated Redis Docker container using the redis:latest image.
 func (it *IT) RedisServer() services.RedisServer {
-	return it.getRedis().Server()
+	return services.RedisServer{it.getRedis().Server()}
 }
 
 // RedisServerT creates a new Redis server and registers its cleanup function with testing.T.
@@ -193,12 +193,12 @@ func (it *IT) getIcinga2() internalServices.Icinga2 {
 // Icinga2Node creates a new Icinga 2 node.
 //
 // Each call to this function will spawn a dedicated Icinga 2 Docker container using the icinga/icinga2:master image.
-func (it *IT) Icinga2Node(name string) services.Icinga2Node {
-	return it.getIcinga2().Node(name)
+func (it *IT) Icinga2Node(name string) services.Icinga2 {
+	return services.Icinga2{it.getIcinga2().Node(name)}
 }
 
 // Icinga2NodeT creates a new Icinga 2 node and registers its cleanup function with testing.T.
-func (it *IT) Icinga2NodeT(t *testing.T, name string) services.Icinga2Node {
+func (it *IT) Icinga2NodeT(t *testing.T, name string) services.Icinga2 {
 	n := it.Icinga2Node(name)
 	t.Cleanup(n.Cleanup)
 	return n
@@ -227,14 +227,14 @@ func (it *IT) getIcingaDb() internalServices.IcingaDb {
 //
 // It expects the ICINGA_TESTING_ICINGADB_BINARY environment variable to be set to the path of a precompiled icingadb
 // binary which is then started in a new Docker container when this function is called.
-func (it *IT) IcingaDbInstance(redis services.RedisServer, mysql services.MysqlDatabase) services.IcingaDbInstance {
-	return it.getIcingaDb().Instance(redis, mysql)
+func (it *IT) IcingaDbInstance(redis services.RedisServer, mysql services.MysqlDatabase) services.IcingaDb {
+	return services.IcingaDb{it.getIcingaDb().Instance(redis, mysql)}
 }
 
 // IcingaDbInstanceT creates a new Icinga DB instance and registers its cleanup function with testing.T.
 func (it *IT) IcingaDbInstanceT(
 	t *testing.T, redis services.RedisServer, mysql services.MysqlDatabase,
-) services.IcingaDbInstance {
+) services.IcingaDb {
 	i := it.IcingaDbInstance(redis, mysql)
 	t.Cleanup(i.Cleanup)
 	return i

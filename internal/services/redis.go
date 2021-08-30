@@ -3,6 +3,6 @@ package services
 import "github.com/icinga/icinga-testing/services"
 
 type Redis interface {
-	Server() services.RedisServer
+	Server() services.RedisServerBase
 	Cleanup()
 }

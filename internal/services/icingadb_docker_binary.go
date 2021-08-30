@@ -50,7 +50,7 @@ func NewIcingaDbDockerBinary(
 	}
 }
 
-func (i *icingaDbDockerBinary) Instance(redis services.RedisServer, mysql services.MysqlDatabase) services.IcingaDbInstance {
+func (i *icingaDbDockerBinary) Instance(redis services.RedisServerBase, mysql services.MysqlDatabaseBase) services.IcingaDbBase {
 	inst := &icingaDbDockerBinaryInstance{
 		icingaDbInstanceInfo: icingaDbInstanceInfo{
 			redis: redis,
@@ -60,13 +60,13 @@ func (i *icingaDbDockerBinary) Instance(redis services.RedisServer, mysql servic
 		icingaDbDockerBinary: i,
 	}
 
-	services.IcingaDbInstanceImportSchema(mysql)
+	services.MysqlDatabase{mysql}.ImportIcingaDbSchema()
 
 	configFile, err := ioutil.TempFile("", "icingadb.yml")
 	if err != nil {
 		panic(err)
 	}
-	err = services.IcingaDbInstanceWriteConfig(inst, configFile)
+	err = services.IcingaDb{inst}.WriteConfig(configFile)
 	if err != nil {
 		panic(err)
 	}
@@ -162,7 +162,7 @@ type icingaDbDockerBinaryInstance struct {
 	configFileName       string
 }
 
-var _ services.IcingaDbInstance = (*icingaDbDockerBinaryInstance)(nil)
+var _ services.IcingaDbBase = (*icingaDbDockerBinaryInstance)(nil)
 
 func (i *icingaDbDockerBinaryInstance) Cleanup() {
 	i.icingaDbDockerBinary.runningMutex.Lock()
