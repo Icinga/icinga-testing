@@ -6,7 +6,10 @@ import (
 	"fmt"
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/client"
-	internalServices "github.com/icinga/icinga-testing/internal/services"
+	"github.com/icinga/icinga-testing/internal/services/icinga2"
+	"github.com/icinga/icinga-testing/internal/services/icingadb"
+	"github.com/icinga/icinga-testing/internal/services/mysql"
+	"github.com/icinga/icinga-testing/internal/services/redis"
 	"github.com/icinga/icinga-testing/services"
 	"github.com/icinga/icinga-testing/utils"
 	"go.uber.org/zap"
@@ -36,10 +39,10 @@ type IT struct {
 	prefix          string
 	dockerClient    *client.Client
 	dockerNetworkId string
-	mysqlServer     internalServices.MysqlServer
-	redis           internalServices.Redis
-	icinga2         internalServices.Icinga2
-	icingaDb        internalServices.IcingaDb
+	mysql           mysql.Creator
+	redis           redis.Creator
+	icinga2         icinga2.Creator
+	icingaDb        icingadb.Creator
 	logger          *zap.Logger
 	loggerDebugCore zapcore.Core
 }
@@ -125,16 +128,16 @@ func (it *IT) Cleanup() {
 	}
 }
 
-func (it *IT) getMysqlServer() internalServices.MysqlServer {
+func (it *IT) getMysqlServer() mysql.Creator {
 	it.mutex.Lock()
 	defer it.mutex.Unlock()
 
-	if it.mysqlServer == nil {
-		it.mysqlServer = internalServices.NewMysqlDocker(it.logger, it.dockerClient, it.prefix+"-mysql", it.dockerNetworkId)
-		it.deferCleanup(it.mysqlServer.Cleanup)
+	if it.mysql == nil {
+		it.mysql = mysql.NewDockerCreator(it.logger, it.dockerClient, it.prefix+"-mysql", it.dockerNetworkId)
+		it.deferCleanup(it.mysql.Cleanup)
 	}
 
-	return it.mysqlServer
+	return it.mysql
 }
 
 // MysqlDatabase creates a new MySQL database and a user to access it.
@@ -142,7 +145,7 @@ func (it *IT) getMysqlServer() internalServices.MysqlServer {
 // The IT object will start a single MySQL Docker container on demand using the mysql:latest image and then creates
 // multiple databases in it.
 func (it *IT) MysqlDatabase() services.MysqlDatabase {
-	return services.MysqlDatabase{MysqlDatabaseBase: it.getMysqlServer().Database()}
+	return services.MysqlDatabase{MysqlDatabaseBase: it.getMysqlServer().CreateMysqlDatabase()}
 }
 
 // MysqlDatabaseT creates a new MySQL database and registers its cleanup function with testing.T.
@@ -152,12 +155,12 @@ func (it *IT) MysqlDatabaseT(t *testing.T) services.MysqlDatabase {
 	return m
 }
 
-func (it *IT) getRedis() internalServices.Redis {
+func (it *IT) getRedis() redis.Creator {
 	it.mutex.Lock()
 	defer it.mutex.Unlock()
 
 	if it.redis == nil {
-		it.redis = internalServices.NewRedisDocker(it.logger, it.dockerClient, it.prefix+"-redis", it.dockerNetworkId)
+		it.redis = redis.NewDockerCreator(it.logger, it.dockerClient, it.prefix+"-redis", it.dockerNetworkId)
 		it.deferCleanup(it.redis.Cleanup)
 	}
 
@@ -168,7 +171,7 @@ func (it *IT) getRedis() internalServices.Redis {
 //
 // Each call to this function will spawn a dedicated Redis Docker container using the redis:latest image.
 func (it *IT) RedisServer() services.RedisServer {
-	return services.RedisServer{RedisServerBase: it.getRedis().Server()}
+	return services.RedisServer{RedisServerBase: it.getRedis().CreateRedisServer()}
 }
 
 // RedisServerT creates a new Redis server and registers its cleanup function with testing.T.
@@ -178,12 +181,12 @@ func (it *IT) RedisServerT(t *testing.T) services.RedisServer {
 	return r
 }
 
-func (it *IT) getIcinga2() internalServices.Icinga2 {
+func (it *IT) getIcinga2() icinga2.Creator {
 	it.mutex.Lock()
 	defer it.mutex.Unlock()
 
 	if it.icinga2 == nil {
-		it.icinga2 = internalServices.NewIcinga2Docker(it.logger, it.dockerClient, it.prefix+"-icinga2", it.dockerNetworkId)
+		it.icinga2 = icinga2.NewDockerCreator(it.logger, it.dockerClient, it.prefix+"-icinga2", it.dockerNetworkId)
 		it.deferCleanup(it.icinga2.Cleanup)
 	}
 
@@ -194,7 +197,7 @@ func (it *IT) getIcinga2() internalServices.Icinga2 {
 //
 // Each call to this function will spawn a dedicated Icinga 2 Docker container using the icinga/icinga2:master image.
 func (it *IT) Icinga2Node(name string) services.Icinga2 {
-	return services.Icinga2{Icinga2Base: it.getIcinga2().Node(name)}
+	return services.Icinga2{Icinga2Base: it.getIcinga2().CreateIcinga2(name)}
 }
 
 // Icinga2NodeT creates a new Icinga 2 node and registers its cleanup function with testing.T.
@@ -204,7 +207,7 @@ func (it *IT) Icinga2NodeT(t *testing.T, name string) services.Icinga2 {
 	return n
 }
 
-func (it *IT) getIcingaDb() internalServices.IcingaDb {
+func (it *IT) getIcingaDb() icingadb.Creator {
 	key := "ICINGA_TESTING_ICINGADB_BINARY"
 	path, ok := os.LookupEnv(key)
 	if !ok {
@@ -215,7 +218,7 @@ func (it *IT) getIcingaDb() internalServices.IcingaDb {
 	defer it.mutex.Unlock()
 
 	if it.icingaDb == nil {
-		it.icingaDb = internalServices.NewIcingaDbDockerBinary(it.logger, it.dockerClient, it.prefix+"-icingadb",
+		it.icingaDb = icingadb.NewDockerBinaryCreator(it.logger, it.dockerClient, it.prefix+"-icingadb",
 			it.dockerNetworkId, path)
 		it.deferCleanup(it.icingaDb.Cleanup)
 	}
@@ -228,7 +231,7 @@ func (it *IT) getIcingaDb() internalServices.IcingaDb {
 // It expects the ICINGA_TESTING_ICINGADB_BINARY environment variable to be set to the path of a precompiled icingadb
 // binary which is then started in a new Docker container when this function is called.
 func (it *IT) IcingaDbInstance(redis services.RedisServer, mysql services.MysqlDatabase) services.IcingaDb {
-	return services.IcingaDb{IcingaDbBase: it.getIcingaDb().Instance(redis, mysql)}
+	return services.IcingaDb{IcingaDbBase: it.getIcingaDb().CreateIcingaDb(redis, mysql)}
 }
 
 // IcingaDbInstanceT creates a new Icinga DB instance and registers its cleanup function with testing.T.

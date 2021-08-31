@@ -1,13 +1,18 @@
-package services
+package mysql
 
 import (
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/icinga/icinga-testing/services"
 )
 
-// mysqlDatabaseInfo serves as a base for implementing the MysqlDatabaseBase interface. Another struct can embed it and
+type Creator interface {
+	CreateMysqlDatabase() services.MysqlDatabaseBase
+	Cleanup()
+}
+
+// info serves as a base for implementing the MysqlDatabaseBase interface. Another struct can embed it and
 // initialize it with values to implement all interface functions except Cleanup.
-type mysqlDatabaseInfo struct {
+type info struct {
 	host     string
 	port     string
 	username string
@@ -15,28 +20,28 @@ type mysqlDatabaseInfo struct {
 	database string
 }
 
-func (m *mysqlDatabaseInfo) Host() string {
+func (m *info) Host() string {
 	return m.host
 }
 
-func (m *mysqlDatabaseInfo) Port() string {
+func (m *info) Port() string {
 	return m.port
 }
 
-func (m *mysqlDatabaseInfo) Username() string {
+func (m *info) Username() string {
 	return m.username
 }
 
-func (m *mysqlDatabaseInfo) Password() string {
+func (m *info) Password() string {
 	return m.password
 }
 
-func (m *mysqlDatabaseInfo) Database() string {
+func (m *info) Database() string {
 	return m.database
 }
 
 type mysqlDatabaseNopCleanup struct {
-	mysqlDatabaseInfo
+	info
 }
 
 func (_ *mysqlDatabaseNopCleanup) Cleanup() {}

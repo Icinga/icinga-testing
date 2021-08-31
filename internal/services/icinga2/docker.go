@@ -1,4 +1,4 @@
-package services
+package icinga2
 
 import (
 	"bytes"
@@ -16,7 +16,7 @@ import (
 	"time"
 )
 
-type icinga2Docker struct {
+type dockerCreator struct {
 	logger              *zap.Logger
 	dockerClient        *client.Client
 	dockerNetworkId     string
@@ -24,22 +24,27 @@ type icinga2Docker struct {
 	containerCounter    uint32
 
 	runningMutex sync.Mutex
-	running      map[*icinga2DockerNode]struct{}
+	running      map[*dockerInstance]struct{}
 }
 
-var _ Icinga2 = (*icinga2Docker)(nil)
+var _ Creator = (*dockerCreator)(nil)
 
-func NewIcinga2Docker(logger *zap.Logger, dockerClient *client.Client, containerNamePrefix string, dockerNetworkId string) Icinga2 {
-	return &icinga2Docker{
+func NewDockerCreator(
+	logger *zap.Logger,
+	dockerClient *client.Client,
+	containerNamePrefix string,
+	dockerNetworkId string,
+) Creator {
+	return &dockerCreator{
 		logger:              logger.With(zap.Bool("icinga2", true)),
 		dockerClient:        dockerClient,
 		dockerNetworkId:     dockerNetworkId,
 		containerNamePrefix: containerNamePrefix,
-		running:             make(map[*icinga2DockerNode]struct{}),
+		running:             make(map[*dockerInstance]struct{}),
 	}
 }
 
-func (i *icinga2Docker) Node(name string) services.Icinga2Base {
+func (i *dockerCreator) CreateIcinga2(name string) services.Icinga2Base {
 	containerName := fmt.Sprintf("%s-%d-%s", i.containerNamePrefix, atomic.AddUint32(&i.containerCounter, 1), name)
 	logger := i.logger.With(zap.String("container-name", containerName))
 
@@ -84,8 +89,8 @@ func (i *icinga2Docker) Node(name string) services.Icinga2Base {
 	}
 	logger.Debug("started container")
 
-	n := &icinga2DockerNode{
-		icinga2NodeInfo: icinga2NodeInfo{
+	n := &dockerInstance{
+		info: info{
 			host: utils.MustString(utils.DockerContainerAddress(context.Background(), i.dockerClient, cont.ID)),
 			port: "5665",
 		},
@@ -112,9 +117,9 @@ func (i *icinga2Docker) Node(name string) services.Icinga2Base {
 	return n
 }
 
-func (i *icinga2Docker) Cleanup() {
+func (i *dockerCreator) Cleanup() {
 	i.runningMutex.Lock()
-	nodes := make([]*icinga2DockerNode, 0, len(i.running))
+	nodes := make([]*dockerInstance, 0, len(i.running))
 	for n, _ := range i.running {
 		nodes = append(nodes, n)
 	}
@@ -125,17 +130,17 @@ func (i *icinga2Docker) Cleanup() {
 	}
 }
 
-type icinga2DockerNode struct {
-	icinga2NodeInfo
-	icinga2Docker *icinga2Docker
+type dockerInstance struct {
+	info
+	icinga2Docker *dockerCreator
 	logger        *zap.Logger
 	containerId   string
 	containerName string
 }
 
-var _ services.Icinga2Base = (*icinga2DockerNode)(nil)
+var _ services.Icinga2Base = (*dockerInstance)(nil)
 
-func (n *icinga2DockerNode) Reload() {
+func (n *dockerInstance) Reload() {
 	err := n.icinga2Docker.dockerClient.ContainerKill(context.Background(), n.containerId, "HUP")
 	if err != nil {
 		n.logger.Fatal("failed to send reload signal to container")
@@ -145,7 +150,7 @@ func (n *icinga2DockerNode) Reload() {
 	// TODO(jb): wait for successful reload?
 }
 
-func (n *icinga2DockerNode) WriteConfig(file string, data []byte) {
+func (n *dockerInstance) WriteConfig(file string, data []byte) {
 	logger := n.logger.With(zap.String("file", file))
 
 	stderr := utils.NewLineWriter(func(line []byte) {
@@ -159,7 +164,7 @@ func (n *icinga2DockerNode) WriteConfig(file string, data []byte) {
 	}
 }
 
-func (n *icinga2DockerNode) EnableIcingaDb(redis services.RedisServerBase) {
+func (n *dockerInstance) EnableIcingaDb(redis services.RedisServerBase) {
 	services.Icinga2{Icinga2Base: n}.WriteIcingaDbConf(redis)
 
 	stdout := utils.NewLineWriter(func(line []byte) {
@@ -176,7 +181,7 @@ func (n *icinga2DockerNode) EnableIcingaDb(redis services.RedisServerBase) {
 	}
 }
 
-func (n *icinga2DockerNode) Cleanup() {
+func (n *dockerInstance) Cleanup() {
 	n.icinga2Docker.runningMutex.Lock()
 	delete(n.icinga2Docker.running, n)
 	n.icinga2Docker.runningMutex.Unlock()

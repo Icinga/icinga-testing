@@ -1,4 +1,4 @@
-package services
+package icingadb
 
 import (
 	"context"
@@ -18,7 +18,7 @@ import (
 	"sync/atomic"
 )
 
-type icingaDbDockerBinary struct {
+type dockerBinaryCreator struct {
 	logger              *zap.Logger
 	dockerClient        *client.Client
 	dockerNetworkId     string
@@ -27,32 +27,38 @@ type icingaDbDockerBinary struct {
 	containerCounter    uint32
 
 	runningMutex sync.Mutex
-	running      map[*icingaDbDockerBinaryInstance]struct{}
+	running      map[*dockerBinaryInstance]struct{}
 }
 
-var _ IcingaDb = (*icingaDbDockerBinary)(nil)
+var _ Creator = (*dockerBinaryCreator)(nil)
 
-func NewIcingaDbDockerBinary(
-	logger *zap.Logger, dockerClient *client.Client, containerNamePrefix string,
-	dockerNetworkId string, binaryPath string,
-) IcingaDb {
+func NewDockerBinaryCreator(
+	logger *zap.Logger,
+	dockerClient *client.Client,
+	containerNamePrefix string,
+	dockerNetworkId string,
+	binaryPath string,
+) Creator {
 	binaryPath, err := filepath.Abs(binaryPath)
 	if err != nil {
 		panic(err)
 	}
-	return &icingaDbDockerBinary{
+	return &dockerBinaryCreator{
 		logger:              logger.With(zap.Bool("icingadb", true)),
 		dockerClient:        dockerClient,
 		dockerNetworkId:     dockerNetworkId,
 		containerNamePrefix: containerNamePrefix,
 		binaryPath:          binaryPath,
-		running:             make(map[*icingaDbDockerBinaryInstance]struct{}),
+		running:             make(map[*dockerBinaryInstance]struct{}),
 	}
 }
 
-func (i *icingaDbDockerBinary) Instance(redis services.RedisServerBase, mysql services.MysqlDatabaseBase) services.IcingaDbBase {
-	inst := &icingaDbDockerBinaryInstance{
-		icingaDbInstanceInfo: icingaDbInstanceInfo{
+func (i *dockerBinaryCreator) CreateIcingaDb(
+	redis services.RedisServerBase,
+	mysql services.MysqlDatabaseBase,
+) services.IcingaDbBase {
+	inst := &dockerBinaryInstance{
+		info: info{
 			redis: redis,
 			mysql: mysql,
 		},
@@ -141,9 +147,9 @@ func (i *icingaDbDockerBinary) Instance(redis services.RedisServerBase, mysql se
 	return inst
 }
 
-func (i *icingaDbDockerBinary) Cleanup() {
+func (i *dockerBinaryCreator) Cleanup() {
 	i.runningMutex.Lock()
-	instances := make([]*icingaDbDockerBinaryInstance, 0, len(i.running))
+	instances := make([]*dockerBinaryInstance, 0, len(i.running))
 	for inst, _ := range i.running {
 		instances = append(instances, inst)
 	}
@@ -154,17 +160,17 @@ func (i *icingaDbDockerBinary) Cleanup() {
 	}
 }
 
-type icingaDbDockerBinaryInstance struct {
-	icingaDbInstanceInfo
-	icingaDbDockerBinary *icingaDbDockerBinary
+type dockerBinaryInstance struct {
+	info
+	icingaDbDockerBinary *dockerBinaryCreator
 	logger               *zap.Logger
 	containerId          string
 	configFileName       string
 }
 
-var _ services.IcingaDbBase = (*icingaDbDockerBinaryInstance)(nil)
+var _ services.IcingaDbBase = (*dockerBinaryInstance)(nil)
 
-func (i *icingaDbDockerBinaryInstance) Cleanup() {
+func (i *dockerBinaryInstance) Cleanup() {
 	i.icingaDbDockerBinary.runningMutex.Lock()
 	delete(i.icingaDbDockerBinary.running, i)
 	i.icingaDbDockerBinary.runningMutex.Unlock()

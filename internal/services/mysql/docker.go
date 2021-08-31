@@ -1,4 +1,4 @@
-package services
+package mysql
 
 import (
 	"context"
@@ -11,17 +11,17 @@ import (
 	"time"
 )
 
-type MysqlDocker struct {
-	*mysqlServerWithRootCreds
+type dockerCreator struct {
+	*rootConnection
 	logger        *zap.Logger
 	client        *client.Client
 	containerId   string
 	containerName string
 }
 
-var _ MysqlServer = (*MysqlDocker)(nil)
+var _ Creator = (*dockerCreator)(nil)
 
-func NewMysqlDocker(logger *zap.Logger, dockerClient *client.Client, containerName string, dockerNetworkId string) *MysqlDocker {
+func NewDockerCreator(logger *zap.Logger, dockerClient *client.Client, containerName string, dockerNetworkId string) *dockerCreator {
 	logger = logger.With(
 		zap.Bool("mysql", true),
 		zap.String("container-name", containerName),
@@ -75,17 +75,17 @@ func NewMysqlDocker(logger *zap.Logger, dockerClient *client.Client, containerNa
 
 	containerAddress := utils.MustString(utils.DockerContainerAddress(context.Background(), dockerClient, cont.ID))
 
-	d := &MysqlDocker{
-		mysqlServerWithRootCreds: NewMysqlServerWithRootCreds(containerAddress, "3306", "root", rootPassword),
-		logger:                   logger,
-		client:                   dockerClient,
-		containerId:              cont.ID,
-		containerName:            containerName,
+	d := &dockerCreator{
+		rootConnection: newRootConnection(containerAddress, "3306", "root", rootPassword),
+		logger:         logger,
+		client:         dockerClient,
+		containerId:    cont.ID,
+		containerName:  containerName,
 	}
 
 	for attempt := 1; ; attempt++ {
 		time.Sleep(1 * time.Second)
-		err := d.mysqlServerWithRootCreds.db.Ping()
+		err := d.rootConnection.db.Ping()
 		if err == nil {
 			break
 		} else if attempt == 60 {
@@ -96,7 +96,7 @@ func NewMysqlDocker(logger *zap.Logger, dockerClient *client.Client, containerNa
 	return d
 }
 
-func (m *MysqlDocker) Cleanup() {
+func (m *dockerCreator) Cleanup() {
 	err := m.client.ContainerRemove(context.Background(), m.containerId, types.ContainerRemoveOptions{
 		Force:         true,
 		RemoveVolumes: true,

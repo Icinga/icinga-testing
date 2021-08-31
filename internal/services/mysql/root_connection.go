@@ -1,4 +1,4 @@
-package services
+package mysql
 
 import (
 	"database/sql"
@@ -8,7 +8,7 @@ import (
 	"sync/atomic"
 )
 
-type mysqlServerWithRootCreds struct {
+type rootConnection struct {
 	host         string
 	port         string
 	rootUsername string
@@ -17,13 +17,13 @@ type mysqlServerWithRootCreds struct {
 	counter      uint32
 }
 
-func NewMysqlServerWithRootCreds(host string, port string, rootUsername string, rootPassword string) *mysqlServerWithRootCreds {
+func newRootConnection(host string, port string, rootUsername string, rootPassword string) *rootConnection {
 	dsn := fmt.Sprintf("%s:%s@tcp(%s:%s)/information_schema", rootUsername, rootPassword, host, port)
 	db, err := sql.Open("mysql", dsn)
 	if err != nil {
 		panic(err)
 	}
-	return &mysqlServerWithRootCreds{
+	return &rootConnection{
 		host:         host,
 		port:         port,
 		rootUsername: rootUsername,
@@ -32,7 +32,7 @@ func NewMysqlServerWithRootCreds(host string, port string, rootUsername string, 
 	}
 }
 
-func (m *mysqlServerWithRootCreds) Database() services.MysqlDatabaseBase {
+func (m *rootConnection) CreateMysqlDatabase() services.MysqlDatabaseBase {
 	id := atomic.AddUint32(&m.counter, 1)
 	username := fmt.Sprintf("u%d", id)
 	password := utils.RandomString(16)
@@ -57,8 +57,8 @@ func (m *mysqlServerWithRootCreds) Database() services.MysqlDatabaseBase {
 		panic(err)
 	}
 
-	return &mysqlServerWithRootCredsDatabase{
-		mysqlDatabaseInfo: mysqlDatabaseInfo{
+	return &rootConnectionDatabase{
+		info: info{
 			host:     m.host,
 			port:     m.port,
 			username: username,
@@ -69,13 +69,8 @@ func (m *mysqlServerWithRootCreds) Database() services.MysqlDatabaseBase {
 	}
 }
 
-type mysqlServerWithRootCredsDatabase struct {
-	mysqlDatabaseInfo
-	server *mysqlServerWithRootCreds
-}
-
-func (m *mysqlServerWithRootCreds) rootConnection() (*sql.DB, error) {
-	d := mysqlDatabaseNopCleanup{mysqlDatabaseInfo{
+func (m *rootConnection) rootConnection() (*sql.DB, error) {
+	d := mysqlDatabaseNopCleanup{info{
 		host:     m.host,
 		port:     m.port,
 		username: m.rootUsername,
@@ -85,7 +80,12 @@ func (m *mysqlServerWithRootCreds) rootConnection() (*sql.DB, error) {
 	return services.MysqlDatabase{MysqlDatabaseBase: &d}.Open()
 }
 
-func (d *mysqlServerWithRootCredsDatabase) Cleanup() {
+type rootConnectionDatabase struct {
+	info
+	server *rootConnection
+}
+
+func (d *rootConnectionDatabase) Cleanup() {
 	_, err := d.server.db.Exec(fmt.Sprintf("DROP DATABASE %s", d.database))
 	if err != nil {
 		panic(err)

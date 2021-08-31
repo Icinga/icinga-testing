@@ -1,4 +1,4 @@
-package services
+package redis
 
 import (
 	"context"
@@ -15,7 +15,7 @@ import (
 	"time"
 )
 
-type redisDocker struct {
+type dockerCreator struct {
 	logger              *zap.Logger
 	dockerClient        *client.Client
 	dockerNetworkId     string
@@ -23,24 +23,24 @@ type redisDocker struct {
 	containerCounter    uint32
 
 	runningMutex sync.Mutex
-	running      map[*redisDockerServer]struct{}
+	running      map[*dockerServer]struct{}
 }
 
-var _ Redis = (*redisDocker)(nil)
+var _ Creator = (*dockerCreator)(nil)
 
-func NewRedisDocker(
+func NewDockerCreator(
 	logger *zap.Logger, dockerClient *client.Client, containerNamePrefix string, dockerNetworkId string,
-) Redis {
-	return &redisDocker{
+) Creator {
+	return &dockerCreator{
 		logger:              logger.With(zap.Bool("redis", true)),
 		dockerClient:        dockerClient,
 		dockerNetworkId:     dockerNetworkId,
 		containerNamePrefix: containerNamePrefix,
-		running:             make(map[*redisDockerServer]struct{}),
+		running:             make(map[*dockerServer]struct{}),
 	}
 }
 
-func (r *redisDocker) Server() services.RedisServerBase {
+func (r *dockerCreator) CreateRedisServer() services.RedisServerBase {
 	containerName := fmt.Sprintf("%s-%d", r.containerNamePrefix, atomic.AddUint32(&r.containerCounter, 1))
 	logger := r.logger.With(zap.String("container-name", containerName))
 
@@ -86,8 +86,8 @@ func (r *redisDocker) Server() services.RedisServerBase {
 	}
 	logger.Debug("started container")
 
-	s := &redisDockerServer{
-		redisServerInfo: redisServerInfo{
+	s := &dockerServer{
+		info: info{
 			host: utils.MustString(utils.DockerContainerAddress(context.Background(), r.dockerClient, cont.ID)),
 			port: "6379",
 		},
@@ -117,9 +117,9 @@ func (r *redisDocker) Server() services.RedisServerBase {
 	return s
 }
 
-func (r *redisDocker) Cleanup() {
+func (r *dockerCreator) Cleanup() {
 	r.runningMutex.Lock()
-	servers := make([]*redisDockerServer, 0, len(r.running))
+	servers := make([]*dockerServer, 0, len(r.running))
 	for s, _ := range r.running {
 		servers = append(servers, s)
 	}
@@ -130,14 +130,14 @@ func (r *redisDocker) Cleanup() {
 	}
 }
 
-type redisDockerServer struct {
-	redisServerInfo
-	redisDocker *redisDocker
+type dockerServer struct {
+	info
+	redisDocker *dockerCreator
 	logger      *zap.Logger
 	containerId string
 }
 
-func (s *redisDockerServer) Cleanup() {
+func (s *dockerServer) Cleanup() {
 	s.redisDocker.runningMutex.Lock()
 	delete(s.redisDocker.running, s)
 	s.redisDocker.runningMutex.Unlock()
@@ -152,4 +152,4 @@ func (s *redisDockerServer) Cleanup() {
 	s.logger.Debug("removed container")
 }
 
-var _ services.RedisServerBase = (*redisDockerServer)(nil)
+var _ services.RedisServerBase = (*dockerServer)(nil)
