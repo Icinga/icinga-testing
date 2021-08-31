@@ -42,11 +42,6 @@ func (i Icinga2) ApiClient() *utils.Icinga2Client {
 	return utils.NewIcinga2Client(i.Host()+":"+i.Port(), "root", "root")
 }
 
-// Deprecated
-func Icinga2NodeApiClient(n Icinga2Base) *utils.Icinga2Client {
-	return Icinga2{n}.ApiClient()
-}
-
 // Ping tries to connect to the API port of an Icinga 2 instance to see if it is running.
 func (i Icinga2) Ping() error {
 	response, err := i.ApiClient().Get("/")
