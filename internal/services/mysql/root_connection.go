@@ -38,8 +38,8 @@ func (m *rootConnection) CreateMysqlDatabase() services.MysqlDatabaseBase {
 	password := utils.RandomString(16)
 	database := fmt.Sprintf("d%d", id)
 
-	// I'm sorry for making the following three queries look like they are prone to SQL-injections, but itesting seems like
-	// MySQL does not support prepared statements for these queries. The values are not user-controlled, so itesting's fine.
+	// I'm sorry for making the following three queries look like they are prone to SQL-injections, but it seems like
+	// MySQL does not support prepared statements for these queries. The values are not user-controlled, so it's fine.
 	_, err := m.db.Exec(fmt.Sprintf("CREATE USER %s IDENTIFIED WITH mysql_native_password BY '%s'", username, password))
 	if err != nil {
 		panic(err)
