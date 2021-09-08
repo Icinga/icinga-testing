@@ -3,9 +3,14 @@ package services
 import (
 	"bytes"
 	_ "embed"
+	"encoding/json"
+	"errors"
 	"fmt"
+	"github.com/icinga/icinga-testing/internal"
 	"github.com/icinga/icinga-testing/utils"
+	"net/http"
 	"text/template"
+	"time"
 )
 
 type Icinga2Base interface {
@@ -15,8 +20,8 @@ type Icinga2Base interface {
 	// Port return the port on which the Icinga 2 API can be reached.
 	Port() string
 
-	// Reload sends a reload signal to the Icinga 2 node.
-	Reload()
+	// TriggerReload sends a reload signal to the Icinga 2 node.
+	TriggerReload()
 
 	// WriteConfig writes a config file to the file system of the Icinga 2 node.
 	//
@@ -38,8 +43,58 @@ type Icinga2 struct {
 }
 
 func (i Icinga2) ApiClient() *utils.Icinga2Client {
-	// TODO: API credentials
-	return utils.NewIcinga2Client(i.Host()+":"+i.Port(), "root", "root")
+	return utils.NewIcinga2Client(i.Host()+":"+i.Port(),
+		internal.Icinga2DefaultUsername,
+		internal.Icinga2DefaultPassword)
+}
+
+// Reload sends a reload signal to icinga2 and waits for the new config to become active.
+func (i Icinga2) Reload() error {
+	variable := "IcingaTestingStartupId"
+	startupId := utils.RandomString(32)
+	i.WriteConfig("etc/icinga2/conf.d/icinga-testing-startup-id.conf",
+		[]byte(fmt.Sprintf("const %s = %q", variable, startupId)))
+
+	i.TriggerReload()
+
+	c := i.ApiClient()
+	timeout := time.NewTimer(20 * time.Second)
+	defer timeout.Stop()
+	interval := time.NewTicker(100 * time.Millisecond)
+	defer interval.Stop()
+
+	var err error
+	for {
+		select {
+		case <-interval.C:
+			var res *http.Response
+			res, err = c.GetJson("/v1/variables/" + variable)
+			if err != nil {
+				continue
+			}
+			if res.StatusCode != http.StatusOK {
+				err = fmt.Errorf("icinga2 responded with HTTP %s", res.Status)
+				continue
+			}
+			var data struct {
+				Results []struct {
+					Value string `json:"value"`
+				} `json:"results"`
+			}
+			err = json.NewDecoder(res.Body).Decode(&data)
+			if err != nil {
+				continue
+			}
+			if len(data.Results) > 0 && data.Results[0].Value == startupId {
+				// New configuration is loaded.
+				return nil
+			} else {
+				err = errors.New("icinga2 is still using an old configuration")
+			}
+		case <-timeout.C:
+			return fmt.Errorf("icinga2 did not reload with new config in time: %w", err)
+		}
+	}
 }
 
 // Ping tries to connect to the API port of an Icinga 2 instance to see if it is running.

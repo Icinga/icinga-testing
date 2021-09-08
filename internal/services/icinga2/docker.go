@@ -110,6 +110,12 @@ func (i *dockerCreator) CreateIcinga2(name string) services.Icinga2Base {
 		}
 	}
 
+	WriteInitialConfig(n)
+	err = services.Icinga2{Icinga2Base: n}.Reload()
+	if err != nil {
+		logger.Fatal("failed initial reload of icinga2", zap.Error(err))
+	}
+
 	i.runningMutex.Lock()
 	i.running[n] = struct{}{}
 	i.runningMutex.Unlock()
@@ -140,7 +146,7 @@ type dockerInstance struct {
 
 var _ services.Icinga2Base = (*dockerInstance)(nil)
 
-func (n *dockerInstance) Reload() {
+func (n *dockerInstance) TriggerReload() {
 	err := n.icinga2Docker.dockerClient.ContainerKill(context.Background(), n.containerId, "HUP")
 	if err != nil {
 		n.logger.Fatal("failed to send reload signal to container")
