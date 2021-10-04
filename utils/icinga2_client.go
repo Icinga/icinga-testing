@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"crypto/tls"
 	"encoding/json"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"io"
 	"net/http"
@@ -83,7 +84,11 @@ func (c *Icinga2Client) CreateObject(t *testing.T, typ string, name string, body
 	url := "/v1/objects/" + typ + "/" + name
 	res, err := c.PutJson(url, bytes.NewBuffer(bodyJson))
 	require.NoErrorf(t, err, "PUT request for %s should succeed", url)
-	require.Equalf(t, http.StatusOK, res.StatusCode, "PUT request for %s should return OK", url)
+	if !assert.Equalf(t, http.StatusOK, res.StatusCode, "PUT request for %s should return OK", url) {
+		body, err := io.ReadAll(res.Body)
+		require.NoError(t, err, "reading response for PUT request for %s", url)
+		t.Logf("\nAPI response: %s\n\n%s\n\nRequest body:\n\n%s", res.Status, body, bodyJson)
+	}
 }
 
 func (c *Icinga2Client) UpdateObject(t *testing.T, typ string, name string, body interface{}) {
