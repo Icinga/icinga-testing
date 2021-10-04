@@ -149,7 +149,7 @@ func (it *IT) MysqlDatabase() services.MysqlDatabase {
 }
 
 // MysqlDatabaseT creates a new MySQL database and registers its cleanup function with testing.T.
-func (it *IT) MysqlDatabaseT(t *testing.T) services.MysqlDatabase {
+func (it *IT) MysqlDatabaseT(t testing.TB) services.MysqlDatabase {
 	m := it.MysqlDatabase()
 	t.Cleanup(m.Cleanup)
 	return m
@@ -175,7 +175,7 @@ func (it *IT) RedisServer() services.RedisServer {
 }
 
 // RedisServerT creates a new Redis server and registers its cleanup function with testing.T.
-func (it *IT) RedisServerT(t *testing.T) services.RedisServer {
+func (it *IT) RedisServerT(t testing.TB) services.RedisServer {
 	r := it.RedisServer()
 	t.Cleanup(r.Cleanup)
 	return r
@@ -201,7 +201,7 @@ func (it *IT) Icinga2Node(name string) services.Icinga2 {
 }
 
 // Icinga2NodeT creates a new Icinga 2 node and registers its cleanup function with testing.T.
-func (it *IT) Icinga2NodeT(t *testing.T, name string) services.Icinga2 {
+func (it *IT) Icinga2NodeT(t testing.TB, name string) services.Icinga2 {
 	n := it.Icinga2Node(name)
 	t.Cleanup(n.Cleanup)
 	return n
@@ -236,7 +236,7 @@ func (it *IT) IcingaDbInstance(redis services.RedisServer, mysql services.MysqlD
 
 // IcingaDbInstanceT creates a new Icinga DB instance and registers its cleanup function with testing.T.
 func (it *IT) IcingaDbInstanceT(
-	t *testing.T, redis services.RedisServer, mysql services.MysqlDatabase,
+	t testing.TB, redis services.RedisServer, mysql services.MysqlDatabase,
 ) services.IcingaDb {
 	i := it.IcingaDbInstance(redis, mysql)
 	t.Cleanup(i.Cleanup)
@@ -244,7 +244,7 @@ func (it *IT) IcingaDbInstanceT(
 }
 
 // Logger returns a *zap.Logger which additionally logs the current test case name.
-func (it *IT) Logger(t *testing.T) *zap.Logger {
+func (it *IT) Logger(t testing.TB) *zap.Logger {
 	cores := []zapcore.Core{zaptest.NewLogger(t, zaptest.WrapOptions(zap.IncreaseLevel(zap.InfoLevel))).Core()}
 	if it.loggerDebugCore != nil {
 		cores = append(cores, it.loggerDebugCore)

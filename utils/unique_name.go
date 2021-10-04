@@ -10,7 +10,7 @@ import (
 
 var uniqueNameCounters sync.Map
 
-func UniqueName(t *testing.T, hint string) string {
+func UniqueName(t testing.TB, hint string) string {
 	prefix := t.Name()
 	if hint != "" {
 		prefix += "-" + hint

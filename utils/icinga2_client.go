@@ -78,7 +78,7 @@ func (c *Icinga2Client) DeleteJson(url string) (*http.Response, error) {
 	return c.Do(req)
 }
 
-func (c *Icinga2Client) CreateObject(t *testing.T, typ string, name string, body interface{}) {
+func (c *Icinga2Client) CreateObject(t testing.TB, typ string, name string, body interface{}) {
 	bodyJson, err := json.Marshal(body)
 	require.NoError(t, err, "json.Marshal() should succeed")
 	url := "/v1/objects/" + typ + "/" + name
@@ -91,7 +91,7 @@ func (c *Icinga2Client) CreateObject(t *testing.T, typ string, name string, body
 	}
 }
 
-func (c *Icinga2Client) UpdateObject(t *testing.T, typ string, name string, body interface{}) {
+func (c *Icinga2Client) UpdateObject(t testing.TB, typ string, name string, body interface{}) {
 	bodyJson, err := json.Marshal(body)
 	require.NoError(t, err, "json.Marshal() should succeed")
 	url := "/v1/objects/" + typ + "/" + name
@@ -100,7 +100,7 @@ func (c *Icinga2Client) UpdateObject(t *testing.T, typ string, name string, body
 	require.Equalf(t, http.StatusOK, res.StatusCode, "POST request for %s should return OK", url)
 }
 
-func (c *Icinga2Client) DeleteObject(t *testing.T, typ string, name string, cascade bool) {
+func (c *Icinga2Client) DeleteObject(t testing.TB, typ string, name string, cascade bool) {
 	params := ""
 	if cascade {
 		params = "?cascade=1"
@@ -111,7 +111,7 @@ func (c *Icinga2Client) DeleteObject(t *testing.T, typ string, name string, casc
 	require.Equalf(t, http.StatusOK, res.StatusCode, "DELETE request for %s should return OK", url)
 }
 
-func (c *Icinga2Client) CreateHost(t *testing.T, name string, body interface{}) {
+func (c *Icinga2Client) CreateHost(t testing.TB, name string, body interface{}) {
 	if body == nil {
 		body = map[string]interface{}{
 			"attrs": map[string]interface{}{
@@ -122,11 +122,11 @@ func (c *Icinga2Client) CreateHost(t *testing.T, name string, body interface{}) 
 	c.CreateObject(t, "hosts", name, body)
 }
 
-func (c *Icinga2Client) DeleteHost(t *testing.T, name string, cascade bool) {
+func (c *Icinga2Client) DeleteHost(t testing.TB, name string, cascade bool) {
 	c.DeleteObject(t, "hosts", name, cascade)
 }
 
-func (c *Icinga2Client) CreateService(t *testing.T, host string, service string, body interface{}) {
+func (c *Icinga2Client) CreateService(t testing.TB, host string, service string, body interface{}) {
 	if body == nil {
 		body = map[string]interface{}{
 			"attrs": map[string]interface{}{
@@ -137,7 +137,7 @@ func (c *Icinga2Client) CreateService(t *testing.T, host string, service string,
 	c.CreateObject(t, "services", host+"!"+service, body)
 }
 
-func (c *Icinga2Client) DeleteService(t *testing.T, host string, service string, cascade bool) {
+func (c *Icinga2Client) DeleteService(t testing.TB, host string, service string, cascade bool) {
 	c.DeleteObject(t, "services", host+"!"+service, cascade)
 }
 
