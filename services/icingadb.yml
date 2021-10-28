@@ -6,3 +6,5 @@ database:
   password: {{.Mysql.Password}}
 redis:
   address: {{.Redis.Host}}:{{.Redis.Port}}
+logging:
+  level: debug
