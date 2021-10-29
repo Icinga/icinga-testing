@@ -60,8 +60,9 @@ func (i *dockerCreator) CreateIcinga2(name string) services.Icinga2Base {
 	}
 
 	cont, err := i.dockerClient.ContainerCreate(context.Background(), &container.Config{
-		Image: dockerImage,
-		Env:   []string{"ICINGA_MASTER=1"},
+		Image:    dockerImage,
+		Hostname: name,
+		Env:      []string{"ICINGA_MASTER=1"},
 	}, nil, &network.NetworkingConfig{
 		EndpointsConfig: map[string]*network.EndpointSettings{
 			networkName: {
