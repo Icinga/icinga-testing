@@ -84,6 +84,7 @@ func (c *Icinga2Client) CreateObject(t testing.TB, typ string, name string, body
 	url := "/v1/objects/" + typ + "/" + name
 	res, err := c.PutJson(url, bytes.NewBuffer(bodyJson))
 	require.NoErrorf(t, err, "PUT request for %s should succeed", url)
+	defer func() { _ = res.Body.Close() }()
 	if !assert.Equalf(t, http.StatusOK, res.StatusCode, "PUT request for %s should return OK", url) {
 		body, err := io.ReadAll(res.Body)
 		require.NoError(t, err, "reading response for PUT request for %s", url)
@@ -97,6 +98,7 @@ func (c *Icinga2Client) UpdateObject(t testing.TB, typ string, name string, body
 	url := "/v1/objects/" + typ + "/" + name
 	res, err := c.PostJson(url, bytes.NewBuffer(bodyJson))
 	require.NoErrorf(t, err, "POST request for %s should succeed", url)
+	defer func() { _ = res.Body.Close() }()
 	require.Equalf(t, http.StatusOK, res.StatusCode, "POST request for %s should return OK", url)
 }
 
@@ -108,6 +110,7 @@ func (c *Icinga2Client) DeleteObject(t testing.TB, typ string, name string, casc
 	url := "/v1/objects/" + typ + "/" + name + params
 	res, err := c.DeleteJson(url)
 	require.NoErrorf(t, err, "DELETE request for %s should succeed", url)
+	defer func() { _ = res.Body.Close() }()
 	require.Equalf(t, http.StatusOK, res.StatusCode, "DELETE request for %s should return OK", url)
 }
 
