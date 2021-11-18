@@ -1,4 +1,5 @@
 database:
+  type: mysql
   host: {{.Mysql.Host}}
   port: {{.Mysql.Port}}
   database: {{.Mysql.Database}}
