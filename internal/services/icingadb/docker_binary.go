@@ -66,8 +66,6 @@ func (i *dockerBinaryCreator) CreateIcingaDb(
 		icingaDbDockerBinary: i,
 	}
 
-	rdb.ImportIcingaDbSchema()
-
 	configFile, err := ioutil.TempFile("", "icingadb.yml")
 	if err != nil {
 		panic(err)

@@ -3,7 +3,6 @@ package services
 import (
 	"database/sql"
 	"fmt"
-	"github.com/go-sql-driver/mysql"
 	"os"
 	"regexp"
 	"strings"
@@ -74,13 +73,7 @@ func (m MysqlDatabase) ImportIcingaDbSchema() {
 	for _, ddl := range sqlStmtSep.Split(string(sqlComment.ReplaceAll(schema, nil)), -1) {
 		if ddl = strings.TrimSpace(ddl); ddl != "" {
 			if _, err := db.Exec(ddl); err != nil {
-				if mysqlErr, ok := err.(*mysql.MySQLError); ok && mysqlErr.Number == 1050 {
-					// ignore 'table already exists' errors for now, probably the schema was already imported
-					// TODO(jb): find a proper solution for this
-					return
-				} else {
-					panic(err)
-				}
+				panic(err)
 			}
 		}
 	}
