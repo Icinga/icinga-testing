@@ -89,7 +89,7 @@ type rootConnectionDatabase struct {
 }
 
 func (d *rootConnectionDatabase) Cleanup() {
-	_, err := d.server.db.Exec(fmt.Sprintf("DROP DATABASE %s", d.database))
+	_, err := d.server.db.Exec(fmt.Sprintf("DROP DATABASE %s WITH (FORCE)", d.database))
 	if err != nil {
 		panic(err)
 	}

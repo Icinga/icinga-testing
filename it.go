@@ -260,15 +260,15 @@ func (it *IT) getIcingaDb() icingadb.Creator {
 //
 // It expects the ICINGA_TESTING_ICINGADB_BINARY environment variable to be set to the path of a precompiled icingadb
 // binary which is then started in a new Docker container when this function is called.
-func (it *IT) IcingaDbInstance(redis services.RedisServer, mysql services.MysqlDatabase) services.IcingaDb {
-	return services.IcingaDb{IcingaDbBase: it.getIcingaDb().CreateIcingaDb(redis, mysql)}
+func (it *IT) IcingaDbInstance(redis services.RedisServer, rdb services.RelationalDatabase) services.IcingaDb {
+	return services.IcingaDb{IcingaDbBase: it.getIcingaDb().CreateIcingaDb(redis, rdb)}
 }
 
 // IcingaDbInstanceT creates a new Icinga DB instance and registers its cleanup function with testing.T.
 func (it *IT) IcingaDbInstanceT(
-	t testing.TB, redis services.RedisServer, mysql services.MysqlDatabase,
+	t testing.TB, redis services.RedisServer, rdb services.RelationalDatabase,
 ) services.IcingaDb {
-	i := it.IcingaDbInstance(redis, mysql)
+	i := it.IcingaDbInstance(redis, rdb)
 	t.Cleanup(i.Cleanup)
 	return i
 }

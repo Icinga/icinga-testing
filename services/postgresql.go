@@ -23,16 +23,26 @@ type PostgresqlDatabaseBase interface {
 	// Password returns the password for connecting to the database.
 	Password() string
 
-	// Database returns the name of the database on the MySQL server.
+	// Database returns the name of the database on the PostgreSQL server.
 	Database() string
 
-	// Cleanup removes the MySQL database.
+	// Cleanup removes the PostgreSQL database.
 	Cleanup()
 }
 
-// MysqlDatabase wraps the MysqlDatabaseBase interface and adds some helper functions.
+// PostgresqlDatabase wraps the PostgresqlDatabaseBase interface and adds some helper functions.
 type PostgresqlDatabase struct {
 	PostgresqlDatabaseBase
+}
+
+var _ RelationalDatabase = PostgresqlDatabase{}
+
+func (p PostgresqlDatabase) IcingaDbType() string {
+	return "pgsql"
+}
+
+func (p PostgresqlDatabase) Driver() string {
+	return "postgres"
 }
 
 func (p PostgresqlDatabase) DSN() string {
@@ -48,11 +58,11 @@ func (p PostgresqlDatabase) DSN() string {
 }
 
 func (p PostgresqlDatabase) Open() (*sql.DB, error) {
-	return sql.Open("postgres", p.DSN())
+	return sql.Open(p.Driver(), p.DSN())
 }
 
 func (p PostgresqlDatabase) ImportIcingaDbSchema() {
-	key := "ICINGA_TESTING_ICINGADB_SCHEMA_POSTGRESQL"
+	key := "ICINGA_TESTING_ICINGADB_SCHEMA_PGSQL"
 	schemaFile, ok := os.LookupEnv(key)
 	if !ok {
 		panic(fmt.Errorf("environment variable %s must be set", key))

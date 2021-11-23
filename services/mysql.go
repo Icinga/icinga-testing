@@ -34,16 +34,26 @@ type MysqlDatabase struct {
 	MysqlDatabaseBase
 }
 
+var _ RelationalDatabase = MysqlDatabase{}
+
+func (m MysqlDatabase) IcingaDbType() string {
+	return "mysql"
+}
+
+func (m MysqlDatabase) Driver() string {
+	return "mysql"
+}
+
 func (m MysqlDatabase) DSN() string {
-	return fmt.Sprintf("%s:%s@tcp(%s:%s)/%s", m.Username(), m.Password(), m.Host(), m.Port(), m.Database())
+	return fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?sql_mode=ANSI_QUOTES", m.Username(), m.Password(), m.Host(), m.Port(), m.Database())
 }
 
 func (m MysqlDatabase) Open() (*sql.DB, error) {
-	return sql.Open("mysql", m.DSN())
+	return sql.Open(m.Driver(), m.DSN())
 }
 
 func (m MysqlDatabase) ImportIcingaDbSchema() {
-	key := "ICINGA_TESTING_ICINGADB_SCHEMA"
+	key := "ICINGA_TESTING_ICINGADB_SCHEMA_MYSQL"
 	schemaFile, ok := os.LookupEnv(key)
 	if !ok {
 		panic(fmt.Errorf("environment variable %s must be set", key))
