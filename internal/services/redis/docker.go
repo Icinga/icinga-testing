@@ -82,7 +82,7 @@ func (r *dockerCreator) CreateRedisServer() services.RedisServerBase {
 
 	err = r.dockerClient.ContainerStart(context.Background(), cont.ID, types.ContainerStartOptions{})
 	if err != nil {
-		logger.Fatal("failed to start container")
+		logger.Fatal("failed to start container", zap.Error(err))
 	}
 	logger.Debug("started container")
 
