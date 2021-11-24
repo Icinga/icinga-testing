@@ -118,7 +118,7 @@ func (i *dockerBinaryCreator) CreateIcingaDb(
 		},
 	}, nil, containerName)
 	if err != nil {
-		inst.logger.Fatal("failed to create icingadb container")
+		inst.logger.Fatal("failed to create icingadb container", zap.Error(err))
 	}
 	inst.containerId = cont.ID
 	inst.logger = inst.logger.With(zap.String("container-id", cont.ID))
