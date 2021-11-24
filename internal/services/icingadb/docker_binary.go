@@ -136,7 +136,7 @@ func (i *dockerBinaryCreator) CreateIcingaDb(
 
 	err = i.dockerClient.ContainerStart(context.Background(), cont.ID, types.ContainerStartOptions{})
 	if err != nil {
-		inst.logger.Fatal("failed to start container")
+		inst.logger.Fatal("failed to start container", zap.Error(err))
 	}
 	inst.logger.Debug("started container")
 
