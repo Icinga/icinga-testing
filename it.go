@@ -70,7 +70,7 @@ func NewIT() *IT {
 		})
 	}
 
-	if n, err := it.dockerClient.NetworkCreate(context.Background(), it.prefix, types.NetworkCreate{}); err != nil {
+	if n, err := it.dockerClient.NetworkCreate(context.Background(), it.prefix, types.NetworkCreate{Labels: map[string]string{"icinga": "testing"}}); err != nil {
 		it.logger.Fatal("failed to create docker network", zap.String("network-name", it.prefix), zap.Error(err))
 	} else {
 		it.logger.Debug("created docker network", zap.String("network-name", it.prefix), zap.String("network-id", n.ID))
