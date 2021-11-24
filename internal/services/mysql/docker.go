@@ -11,6 +11,8 @@ import (
 	"time"
 )
 
+const PORT = "3306"
+
 type dockerCreator struct {
 	*rootConnection
 	logger        *zap.Logger
@@ -38,13 +40,14 @@ func NewDockerCreator(logger *zap.Logger, dockerClient *client.Client, container
 		panic(err)
 	}
 
+	port := utils.NewPortDecision(dockerClient, PORT)
+
 	rootPassword := utils.RandomString(16)
 	cont, err := dockerClient.ContainerCreate(context.Background(), &container.Config{
-		ExposedPorts: nil,
-		Env:          []string{"MYSQL_ROOT_PASSWORD=" + rootPassword},
-		Cmd:          nil,
-		Image:        dockerImage,
-	}, nil, &network.NetworkingConfig{
+		Env:   []string{"MYSQL_ROOT_PASSWORD=" + rootPassword},
+		Cmd:   nil,
+		Image: dockerImage,
+	}, &container.HostConfig{PortBindings: port.Map()}, &network.NetworkingConfig{
 		EndpointsConfig: map[string]*network.EndpointSettings{
 			networkName: {
 				Aliases:   []string{"mysql"},
@@ -73,14 +76,14 @@ func NewDockerCreator(logger *zap.Logger, dockerClient *client.Client, container
 	}
 	logger.Debug("started mysql container")
 
-	containerAddress := utils.MustString(utils.DockerContainerAddress(context.Background(), dockerClient, cont.ID))
-
 	d := &dockerCreator{
-		rootConnection: newRootConnection(containerAddress, "3306", "root", rootPassword),
-		logger:         logger,
-		client:         dockerClient,
-		containerId:    cont.ID,
-		containerName:  containerName,
+		rootConnection: newRootConnection(
+			port.Address(context.Background(), dockerClient, cont.ID), port.Port(), "root", rootPassword,
+		),
+		logger:        logger,
+		client:        dockerClient,
+		containerId:   cont.ID,
+		containerName: containerName,
 	}
 
 	for attempt := 1; ; attempt++ {
