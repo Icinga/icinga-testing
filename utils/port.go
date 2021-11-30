@@ -65,6 +65,8 @@ func (p *PortDecision) Binding(ctx context.Context, c *client.Client, id string)
 			return nil, errors.New(fmt.Sprintf("default port %s not exposed", defaultPort))
 		}
 		port = p[0].HostPort
+	} else {
+		port = p.port
 	}
 
 	return &PortBinding{
