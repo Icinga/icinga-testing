@@ -173,19 +173,6 @@ func (n *dockerInstance) WriteConfig(file string, data []byte) {
 
 func (n *dockerInstance) EnableIcingaDb(redis services.RedisServerBase) {
 	services.Icinga2{Icinga2Base: n}.WriteIcingaDbConf(redis)
-
-	stdout := utils.NewLineWriter(func(line []byte) {
-		n.logger.Debug("exec stdout", zap.ByteString("line", line))
-	})
-	stderr := utils.NewLineWriter(func(line []byte) {
-		n.logger.Error("exec stderr", zap.ByteString("line", line))
-	})
-
-	err := utils.DockerExec(context.Background(), n.icinga2Docker.dockerClient, n.logger, n.containerId,
-		[]string{"icinga2", "feature", "enable", "icingadb"}, nil, stdout, stderr)
-	if err != nil {
-		panic(err)
-	}
 }
 
 func (n *dockerInstance) Cleanup() {
