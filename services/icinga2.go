@@ -119,5 +119,5 @@ func (i Icinga2) WriteIcingaDbConf(r RedisServerBase) {
 	if err != nil {
 		panic(err)
 	}
-	i.WriteConfig("etc/icinga2/features-available/icingadb.conf", b.Bytes())
+	i.WriteConfig(fmt.Sprintf("etc/icinga2/features-enabled/icingadb_%s_%s.conf", r.Host(), r.Port()), b.Bytes())
 }
