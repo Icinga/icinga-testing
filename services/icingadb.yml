@@ -8,3 +8,4 @@ redis:
   address: {{.Redis.Host}}:{{.Redis.Port}}
 logging:
   level: debug
+  interval: 1s
