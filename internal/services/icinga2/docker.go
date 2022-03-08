@@ -171,6 +171,20 @@ func (n *dockerInstance) WriteConfig(file string, data []byte) {
 	}
 }
 
+func (n *dockerInstance) DeleteConfigGlob(glob string) {
+	logger := n.logger.With(zap.String("glob", glob))
+
+	stderr := utils.NewLineWriter(func(line []byte) {
+		logger.Error("error from container while deleting file", zap.ByteString("line", line))
+	})
+
+	err := utils.DockerExec(context.Background(), n.icinga2Docker.dockerClient, n.logger, n.containerId,
+		[]string{"perl", "-e", `map { unlink $_ or die "$_: $!" } glob @ARGV[0]`, "--", "/" + glob}, nil, nil, stderr)
+	if err != nil {
+		panic(err)
+	}
+}
+
 func (n *dockerInstance) EnableIcingaDb(redis services.RedisServerBase) {
 	services.Icinga2{Icinga2Base: n}.WriteIcingaDbConf(redis)
 }
