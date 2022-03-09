@@ -30,6 +30,13 @@ type Icinga2Base interface {
 	//   i.WriteConfig("etc/icinga2/conf.d/api-users.conf", []byte("var answer = 42"))
 	WriteConfig(file string, data []byte)
 
+	// DeleteConfigGlob deletes all configs file matching a glob from the file system of the Icinga 2 node.
+	//
+	// Example usage:
+	//
+	//   i.DeleteConfigGlob("etc/icinga2/zones.d/test/*.conf")
+	DeleteConfigGlob(glob string)
+
 	// EnableIcingaDb enables the icingadb feature on this node using the connection details of redis.
 	EnableIcingaDb(redis RedisServerBase)
 
