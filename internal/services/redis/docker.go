@@ -15,6 +15,8 @@ import (
 	"time"
 )
 
+const PORT = "6379"
+
 type dockerCreator struct {
 	logger              *zap.Logger
 	dockerClient        *client.Client
@@ -55,9 +57,11 @@ func (r *dockerCreator) CreateRedisServer() services.RedisServerBase {
 		panic(err)
 	}
 
+	port := utils.NewPortDecision(r.dockerClient, PORT)
+
 	cont, err := r.dockerClient.ContainerCreate(context.Background(), &container.Config{
 		Image: dockerImage,
-	}, nil, &network.NetworkingConfig{
+	}, &container.HostConfig{PortBindings: port.Map()}, &network.NetworkingConfig{
 		EndpointsConfig: map[string]*network.EndpointSettings{
 			networkName: {
 				NetworkID: r.dockerNetworkId,
@@ -88,8 +92,8 @@ func (r *dockerCreator) CreateRedisServer() services.RedisServerBase {
 
 	s := &dockerServer{
 		info: info{
-			host: utils.MustString(utils.DockerContainerAddress(context.Background(), r.dockerClient, cont.ID)),
-			port: "6379",
+			host: port.Address(context.Background(), r.dockerClient, cont.ID),
+			port: port.Port(),
 		},
 		redisDocker: r,
 		logger:      logger,

@@ -16,6 +16,8 @@ import (
 	"time"
 )
 
+const PORT = "5665"
+
 type dockerCreator struct {
 	logger              *zap.Logger
 	dockerClient        *client.Client
@@ -59,11 +61,13 @@ func (i *dockerCreator) CreateIcinga2(name string) services.Icinga2Base {
 		panic(err)
 	}
 
+	port := utils.NewPortDecision(i.dockerClient, PORT)
+
 	cont, err := i.dockerClient.ContainerCreate(context.Background(), &container.Config{
 		Image:    dockerImage,
 		Hostname: name,
 		Env:      []string{"ICINGA_MASTER=1"},
-	}, nil, &network.NetworkingConfig{
+	}, &container.HostConfig{PublishAllPorts: port.Remote()}, &network.NetworkingConfig{
 		EndpointsConfig: map[string]*network.EndpointSettings{
 			networkName: {
 				NetworkID: i.dockerNetworkId,
@@ -90,10 +94,15 @@ func (i *dockerCreator) CreateIcinga2(name string) services.Icinga2Base {
 	}
 	logger.Debug("started container")
 
+	binding, err := port.Binding(context.Background(), i.dockerClient, cont.ID)
+	if err != nil {
+		logger.Fatal("can't create port binding", zap.Error(err))
+	}
+
 	n := &dockerInstance{
 		info: info{
-			host: utils.MustString(utils.DockerContainerAddress(context.Background(), i.dockerClient, cont.ID)),
-			port: "5665",
+			host: binding.Host,
+			port: binding.Port,
 		},
 		icinga2Docker: i,
 		logger:        logger,
