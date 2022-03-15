@@ -11,6 +11,7 @@ require (
 	github.com/go-redis/redis/v8 v8.11.3
 	github.com/go-sql-driver/mysql v1.6.0
 	github.com/gorilla/mux v1.8.0 // indirect
+	github.com/lib/pq v1.10.4
 	github.com/moby/term v0.0.0-20201216013528-df9cb8a40635 // indirect
 	github.com/morikuni/aec v1.0.0 // indirect
 	github.com/stretchr/testify v1.7.0

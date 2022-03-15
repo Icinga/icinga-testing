@@ -3,12 +3,14 @@ package services
 import (
 	"database/sql"
 	"fmt"
+	"net"
+	"net/url"
 	"os"
 	"regexp"
 	"strings"
 )
 
-type MysqlDatabaseBase interface {
+type PostgresqlDatabaseBase interface {
 	// Host returns the host for connecting to this database.
 	Host() string
 
@@ -21,38 +23,46 @@ type MysqlDatabaseBase interface {
 	// Password returns the password for connecting to the database.
 	Password() string
 
-	// Database returns the name of the database on the MySQL server.
+	// Database returns the name of the database on the PostgreSQL server.
 	Database() string
 
-	// Cleanup removes the MySQL database.
+	// Cleanup removes the PostgreSQL database.
 	Cleanup()
 }
 
-// MysqlDatabase wraps the MysqlDatabaseBase interface and adds some helper functions.
-type MysqlDatabase struct {
-	MysqlDatabaseBase
+// PostgresqlDatabase wraps the PostgresqlDatabaseBase interface and adds some helper functions.
+type PostgresqlDatabase struct {
+	PostgresqlDatabaseBase
 }
 
-var _ RelationalDatabase = MysqlDatabase{}
+var _ RelationalDatabase = PostgresqlDatabase{}
 
-func (m MysqlDatabase) IcingaDbType() string {
-	return "mysql"
+func (p PostgresqlDatabase) IcingaDbType() string {
+	return "pgsql"
 }
 
-func (m MysqlDatabase) Driver() string {
-	return "mysql"
+func (p PostgresqlDatabase) Driver() string {
+	return "postgres"
 }
 
-func (m MysqlDatabase) DSN() string {
-	return fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?sql_mode=ANSI_QUOTES", m.Username(), m.Password(), m.Host(), m.Port(), m.Database())
+func (p PostgresqlDatabase) DSN() string {
+	u := url.URL{
+		Scheme:   "postgres",
+		User:     url.UserPassword(p.Username(), p.Password()),
+		Host:     net.JoinHostPort(p.Host(), p.Port()),
+		Path:     "/" + url.PathEscape(p.Database()),
+		RawQuery: "sslmode=disable",
+	}
+
+	return u.String()
 }
 
-func (m MysqlDatabase) Open() (*sql.DB, error) {
-	return sql.Open(m.Driver(), m.DSN())
+func (p PostgresqlDatabase) Open() (*sql.DB, error) {
+	return sql.Open(p.Driver(), p.DSN())
 }
 
-func (m MysqlDatabase) ImportIcingaDbSchema() {
-	key := "ICINGA_TESTING_ICINGADB_SCHEMA_MYSQL"
+func (p PostgresqlDatabase) ImportIcingaDbSchema() {
+	key := "ICINGA_TESTING_ICINGADB_SCHEMA_PGSQL"
 	schemaFile, ok := os.LookupEnv(key)
 	if !ok {
 		panic(fmt.Errorf("environment variable %s must be set", key))
@@ -63,7 +73,7 @@ func (m MysqlDatabase) ImportIcingaDbSchema() {
 		panic(fmt.Errorf("failed to read icingadb schema file %q: %w", schemaFile, err))
 	}
 
-	db, err := MysqlDatabase{m}.Open()
+	db, err := PostgresqlDatabase{PostgresqlDatabaseBase: p}.Open()
 	if err != nil {
 		panic(err)
 	}

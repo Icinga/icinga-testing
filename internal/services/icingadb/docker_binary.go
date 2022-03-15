@@ -55,18 +55,16 @@ func NewDockerBinaryCreator(
 
 func (i *dockerBinaryCreator) CreateIcingaDb(
 	redis services.RedisServerBase,
-	mysql services.MysqlDatabaseBase,
+	rdb services.RelationalDatabase,
 ) services.IcingaDbBase {
 	inst := &dockerBinaryInstance{
 		info: info{
 			redis: redis,
-			mysql: mysql,
+			rdb:   rdb,
 		},
 		logger:               i.logger,
 		icingaDbDockerBinary: i,
 	}
-
-	services.MysqlDatabase{MysqlDatabaseBase: mysql}.ImportIcingaDbSchema()
 
 	configFile, err := ioutil.TempFile("", "icingadb.yml")
 	if err != nil {

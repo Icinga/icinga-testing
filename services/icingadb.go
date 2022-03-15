@@ -10,8 +10,8 @@ type IcingaDbBase interface {
 	// Redis returns the instance information of the Redis server this instance is using.
 	Redis() RedisServerBase
 
-	// Mysql returns the instance information of the MySQL database this instance is using.
-	Mysql() MysqlDatabaseBase
+	// RelationalDatabase returns the instance information of the relational database this instance is using.
+	RelationalDatabase() RelationalDatabase
 
 	// Cleanup stops the instance and removes everything that was created to start it.
 	Cleanup()

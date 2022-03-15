@@ -9,6 +9,7 @@ import (
 	"github.com/icinga/icinga-testing/internal/services/icinga2"
 	"github.com/icinga/icinga-testing/internal/services/icingadb"
 	"github.com/icinga/icinga-testing/internal/services/mysql"
+	"github.com/icinga/icinga-testing/internal/services/postgresql"
 	"github.com/icinga/icinga-testing/internal/services/redis"
 	"github.com/icinga/icinga-testing/services"
 	"github.com/icinga/icinga-testing/utils"
@@ -40,6 +41,7 @@ type IT struct {
 	dockerClient    *client.Client
 	dockerNetworkId string
 	mysql           mysql.Creator
+	postgresql      postgresql.Creator
 	redis           redis.Creator
 	icinga2         icinga2.Creator
 	icingaDb        icingadb.Creator
@@ -140,6 +142,19 @@ func (it *IT) getMysqlServer() mysql.Creator {
 	return it.mysql
 }
 
+func (it *IT) getPostgresqlServer() postgresql.Creator {
+	it.mutex.Lock()
+	defer it.mutex.Unlock()
+
+	if it.postgresql == nil {
+		it.postgresql = postgresql.NewDockerCreator(it.logger, it.dockerClient,
+			it.prefix+"-postgresql", it.dockerNetworkId)
+		it.deferCleanup(it.postgresql.Cleanup)
+	}
+
+	return it.postgresql
+}
+
 // MysqlDatabase creates a new MySQL database and a user to access it.
 //
 // The IT object will start a single MySQL Docker container on demand using the mysql:latest image and then creates
@@ -153,6 +168,21 @@ func (it *IT) MysqlDatabaseT(t testing.TB) services.MysqlDatabase {
 	m := it.MysqlDatabase()
 	t.Cleanup(m.Cleanup)
 	return m
+}
+
+// PostgresqlDatabase creates a new PostgreSQL database and a user to access it.
+//
+// The IT object will start a single PostgreSQL Docker container on demand using the postgres:latest image and then
+// creates multiple databases in it.
+func (it *IT) PostgresqlDatabase() services.PostgresqlDatabase {
+	return services.PostgresqlDatabase{PostgresqlDatabaseBase: it.getPostgresqlServer().CreatePostgresqlDatabase()}
+}
+
+// PostgresDatabaseT creates a new MySQL database and registers its cleanup function with testing.T.
+func (it *IT) PostgresqlDatabaseT(t testing.TB) services.PostgresqlDatabase {
+	p := it.PostgresqlDatabase()
+	t.Cleanup(p.Cleanup)
+	return p
 }
 
 func (it *IT) getRedis() redis.Creator {
@@ -230,15 +260,15 @@ func (it *IT) getIcingaDb() icingadb.Creator {
 //
 // It expects the ICINGA_TESTING_ICINGADB_BINARY environment variable to be set to the path of a precompiled icingadb
 // binary which is then started in a new Docker container when this function is called.
-func (it *IT) IcingaDbInstance(redis services.RedisServer, mysql services.MysqlDatabase) services.IcingaDb {
-	return services.IcingaDb{IcingaDbBase: it.getIcingaDb().CreateIcingaDb(redis, mysql)}
+func (it *IT) IcingaDbInstance(redis services.RedisServer, rdb services.RelationalDatabase) services.IcingaDb {
+	return services.IcingaDb{IcingaDbBase: it.getIcingaDb().CreateIcingaDb(redis, rdb)}
 }
 
 // IcingaDbInstanceT creates a new Icinga DB instance and registers its cleanup function with testing.T.
 func (it *IT) IcingaDbInstanceT(
-	t testing.TB, redis services.RedisServer, mysql services.MysqlDatabase,
+	t testing.TB, redis services.RedisServer, rdb services.RelationalDatabase,
 ) services.IcingaDb {
-	i := it.IcingaDbInstance(redis, mysql)
+	i := it.IcingaDbInstance(redis, rdb)
 	t.Cleanup(i.Cleanup)
 	return i
 }

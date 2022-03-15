@@ -6,20 +6,20 @@ import (
 )
 
 type Creator interface {
-	CreateIcingaDb(redis services.RedisServerBase, mysql services.MysqlDatabaseBase) services.IcingaDbBase
+	CreateIcingaDb(redis services.RedisServerBase, mysql services.RelationalDatabase) services.IcingaDbBase
 	Cleanup()
 }
 
 // info provides a partial implementation of the services.IcingaDbBase interface.
 type info struct {
 	redis services.RedisServerBase
-	mysql services.MysqlDatabaseBase
+	rdb   services.RelationalDatabase
 }
 
 func (i *info) Redis() services.RedisServerBase {
 	return i.redis
 }
 
-func (i *info) Mysql() services.MysqlDatabaseBase {
-	return i.mysql
+func (i *info) RelationalDatabase() services.RelationalDatabase {
+	return i.rdb
 }
