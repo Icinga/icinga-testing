@@ -49,7 +49,7 @@ func (r *dockerCreator) CreateRedisServer() services.RedisServerBase {
 		panic(err)
 	}
 
-	dockerImage := "redis:latest"
+	dockerImage := utils.GetEnvDefault("ICINGA_TESTING_REDIS_IMAGE", "redis:latest")
 	err = utils.DockerImagePull(context.Background(), logger, r.dockerClient, dockerImage, false)
 	if err != nil {
 		panic(err)

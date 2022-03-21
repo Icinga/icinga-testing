@@ -32,7 +32,7 @@ func NewDockerCreator(logger *zap.Logger, dockerClient *client.Client, container
 		panic(err)
 	}
 
-	dockerImage := "postgres:latest"
+	dockerImage := utils.GetEnvDefault("ICINGA_TESTING_PGSQL_IMAGE", "postgres:latest")
 	err = utils.DockerImagePull(context.Background(), logger, dockerClient, dockerImage, false)
 	if err != nil {
 		panic(err)
