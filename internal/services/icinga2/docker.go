@@ -53,7 +53,7 @@ func (i *dockerCreator) CreateIcinga2(name string) services.Icinga2Base {
 		panic(err)
 	}
 
-	dockerImage := "icinga/icinga2:master"
+	dockerImage := utils.GetEnvDefault("ICINGA_TESTING_ICINGA2_IMAGE", "icinga/icinga2:master")
 	err = utils.DockerImagePull(context.Background(), logger, i.dockerClient, dockerImage, false)
 	if err != nil {
 		panic(err)

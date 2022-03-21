@@ -32,7 +32,7 @@ func NewDockerCreator(logger *zap.Logger, dockerClient *client.Client, container
 		panic(err)
 	}
 
-	dockerImage := "mysql:latest"
+	dockerImage := utils.GetEnvDefault("ICINGA_TESTING_MYSQL_IMAGE", "mysql:latest")
 	err = utils.DockerImagePull(context.Background(), logger, dockerClient, dockerImage, false)
 	if err != nil {
 		panic(err)
