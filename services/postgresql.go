@@ -51,7 +51,7 @@ func (p PostgresqlDatabase) DSN() string {
 		User:     url.UserPassword(p.Username(), p.Password()),
 		Host:     net.JoinHostPort(p.Host(), p.Port()),
 		Path:     "/" + url.PathEscape(p.Database()),
-		RawQuery: "sslmode=disable",
+		RawQuery: "sslmode=disable&binary_parameters=yes",
 	}
 
 	return u.String()
