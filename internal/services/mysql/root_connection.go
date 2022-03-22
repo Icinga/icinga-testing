@@ -2,7 +2,9 @@ package mysql
 
 import (
 	"database/sql"
+	"errors"
 	"fmt"
+	"github.com/go-sql-driver/mysql"
 	"github.com/icinga/icinga-testing/services"
 	"github.com/icinga/icinga-testing/utils"
 	"sync/atomic"
@@ -54,7 +56,11 @@ func (m *rootConnection) CreateMysqlDatabase() services.MysqlDatabaseBase {
 	}
 	_, err = m.db.Exec(fmt.Sprintf("GRANT SESSION_VARIABLES_ADMIN ON *.* TO %s", username))
 	if err != nil {
-		panic(err)
+		// SESSION_VARIABLES_ADMIN is only needed and supported on MySQL 8+, others return a syntax error (1064).
+		var mysqlError *mysql.MySQLError
+		if !errors.As(err, &mysqlError) || mysqlError.Number != 1064 {
+			panic(err)
+		}
 	}
 
 	return &rootConnectionDatabase{
