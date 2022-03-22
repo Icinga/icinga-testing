@@ -42,7 +42,7 @@ func NewDockerCreator(logger *zap.Logger, dockerClient *client.Client, container
 	cont, err := dockerClient.ContainerCreate(context.Background(), &container.Config{
 		ExposedPorts: nil,
 		Env:          []string{"MYSQL_ROOT_PASSWORD=" + rootPassword},
-		Cmd:          nil,
+		Cmd:          []string{"--disable-log-bin"},
 		Image:        dockerImage,
 	}, nil, &network.NetworkingConfig{
 		EndpointsConfig: map[string]*network.EndpointSettings{
