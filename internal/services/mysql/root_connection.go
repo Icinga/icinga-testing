@@ -40,7 +40,7 @@ func (m *rootConnection) CreateMysqlDatabase() services.MysqlDatabaseBase {
 
 	// I'm sorry for making the following three queries look like they are prone to SQL-injections, but it seems like
 	// MySQL does not support prepared statements for these queries. The values are not user-controlled, so it's fine.
-	_, err := m.db.Exec(fmt.Sprintf("CREATE USER %s IDENTIFIED WITH mysql_native_password BY '%s'", username, password))
+	_, err := m.db.Exec(fmt.Sprintf("CREATE USER %s IDENTIFIED BY '%s'", username, password))
 	if err != nil {
 		panic(err)
 	}
