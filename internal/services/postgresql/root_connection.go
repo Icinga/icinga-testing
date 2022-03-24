@@ -89,7 +89,32 @@ type rootConnectionDatabase struct {
 }
 
 func (d *rootConnectionDatabase) Cleanup() {
-	_, err := d.server.db.Exec(fmt.Sprintf("DROP DATABASE %s WITH (FORCE)", d.database))
+	db := d.server.db
+
+	var serverVersion int
+	err := db.QueryRow("SHOW server_version_num").Scan(&serverVersion)
+	if err != nil {
+		panic(err)
+	}
+
+	// Support for `WITH (FORCE)` was only added in PostgreSQL 13. For older versions,
+	// open connections have to be terminated explicitly using another query.
+	if serverVersion >= 130000 {
+		_, err := db.Exec(fmt.Sprintf("DROP DATABASE %s WITH (FORCE)", d.database))
+		if err != nil {
+			panic(err)
+		}
+	} else {
+		_, err := db.Exec("SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = $1", d.database)
+		if err != nil {
+			panic(err)
+		}
+		_, err = db.Exec(fmt.Sprintf(`DROP DATABASE %s`, d.database))
+		if err != nil {
+			panic(err)
+		}
+	}
+
 	if err != nil {
 		panic(err)
 	}
