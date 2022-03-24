@@ -6,8 +6,6 @@ import (
 	"github.com/icinga/icinga-testing/services"
 	"github.com/icinga/icinga-testing/utils"
 	_ "github.com/lib/pq"
-	"net"
-	"net/url"
 	"sync/atomic"
 )
 
@@ -16,29 +14,15 @@ type rootConnection struct {
 	port     string
 	username string
 	password string
-	db       *sql.DB
 	counter  uint32
 }
 
 func newRootConnection(host string, port string, rootUsername string, rootPassword string) *rootConnection {
-	u := url.URL{
-		Scheme:   "postgres",
-		User:     url.UserPassword(rootUsername, rootPassword),
-		Host:     net.JoinHostPort(host, port),
-		Path:     "/postgres",
-		RawQuery: "sslmode=disable",
-	}
-
-	db, err := sql.Open("postgres", u.String())
-	if err != nil {
-		panic(err)
-	}
 	return &rootConnection{
 		host:     host,
 		port:     port,
 		username: rootUsername,
 		password: rootPassword,
-		db:       db,
 	}
 }
 
@@ -48,14 +32,23 @@ func (c *rootConnection) CreatePostgresqlDatabase() services.PostgresqlDatabaseB
 	password := utils.RandomString(16)
 	database := fmt.Sprintf("d%d", id)
 
+	db, err := c.openAsRoot("postgres")
+	defer func() { _ = db.Close() }()
+
 	// I'm sorry for making the following queries look like they are prone to SQL-injections, but it seems like
 	// PostgreSQL does not support prepared statements for these queries. The values are not user-controlled, so it's
 	// fine.
-	_, err := c.db.Exec(fmt.Sprintf("CREATE USER %s WITH PASSWORD '%s'", username, password))
+	_, err = db.Exec(fmt.Sprintf("CREATE USER %s WITH PASSWORD '%s'", username, password))
 	if err != nil {
 		panic(err)
 	}
-	_, err = c.db.Exec(fmt.Sprintf("CREATE DATABASE %s WITH OWNER %s", database, username))
+	_, err = db.Exec(fmt.Sprintf("CREATE DATABASE %s WITH OWNER %s", database, username))
+	if err != nil {
+		panic(err)
+	}
+
+	// The citext extension is required by Icinga DB.
+	err = c.createExtension(database, "citext")
 	if err != nil {
 		panic(err)
 	}
@@ -72,15 +65,26 @@ func (c *rootConnection) CreatePostgresqlDatabase() services.PostgresqlDatabaseB
 	}
 }
 
-func (c *rootConnection) rootConnection() (*sql.DB, error) {
+func (c *rootConnection) openAsRoot(database string) (*sql.DB, error) {
 	d := postgresqlDatabaseNopCleanup{info{
 		host:     c.host,
 		port:     c.port,
 		username: c.username,
 		password: c.password,
-		database: "postgres",
+		database: database,
 	}}
 	return services.PostgresqlDatabase{PostgresqlDatabaseBase: &d}.Open()
+}
+
+func (c *rootConnection) createExtension(database string, extension string) error {
+	userDb, err := c.openAsRoot(database)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = userDb.Close() }()
+
+	_, err = userDb.Exec("CREATE EXTENSION IF NOT EXISTS " + extension)
+	return err
 }
 
 type rootConnectionDatabase struct {
@@ -89,11 +93,17 @@ type rootConnectionDatabase struct {
 }
 
 func (d *rootConnectionDatabase) Cleanup() {
-	_, err := d.server.db.Exec(fmt.Sprintf("DROP DATABASE %s WITH (FORCE)", d.database))
+	db, err := d.server.openAsRoot("postgres")
 	if err != nil {
 		panic(err)
 	}
-	_, err = d.server.db.Exec(fmt.Sprintf("DROP USER %s", d.username))
+	defer func() { _ = db.Close() }()
+
+	_, err = db.Exec(fmt.Sprintf("DROP DATABASE %s WITH (FORCE)", d.database))
+	if err != nil {
+		panic(err)
+	}
+	_, err = db.Exec(fmt.Sprintf("DROP USER %s", d.username))
 	if err != nil {
 		panic(err)
 	}
