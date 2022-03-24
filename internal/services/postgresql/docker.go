@@ -93,6 +93,11 @@ func NewDockerCreator(logger *zap.Logger, dockerClient *client.Client, container
 		}
 	}
 
+	_, err = d.rootConnection.db.Exec("CREATE EXTENSION IF NOT EXISTS citext")
+	if err != nil {
+		panic(err)
+	}
+
 	return d
 }
 
