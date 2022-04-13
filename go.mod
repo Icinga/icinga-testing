@@ -3,6 +3,7 @@ module github.com/icinga/icinga-testing
 go 1.16
 
 require (
+	github.com/Icinga/go-libs v0.0.0-20220420130327-ef58ad52edd8
 	github.com/Microsoft/go-winio v0.5.0 // indirect
 	github.com/cespare/xxhash/v2 v2.1.2 // indirect
 	github.com/containerd/containerd v1.5.5 // indirect
