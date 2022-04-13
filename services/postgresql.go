@@ -6,8 +6,6 @@ import (
 	"net"
 	"net/url"
 	"os"
-	"regexp"
-	"strings"
 )
 
 type PostgresqlDatabaseBase interface {
@@ -77,14 +75,7 @@ func (p PostgresqlDatabase) ImportIcingaDbSchema() {
 	if err != nil {
 		panic(err)
 	}
-	// duplicated from https://github.com/Icinga/docker-icingadb/blob/master/entrypoint/main.go
-	sqlComment := regexp.MustCompile(`(?m)^--.*`)
-	sqlStmtSep := regexp.MustCompile(`(?m);$`)
-	for _, ddl := range sqlStmtSep.Split(string(sqlComment.ReplaceAll(schema, nil)), -1) {
-		if ddl = strings.TrimSpace(ddl); ddl != "" {
-			if _, err := db.Exec(ddl); err != nil {
-				panic(err)
-			}
-		}
+	if _, err := db.Exec(string(schema)); err != nil {
+		panic(err)
 	}
 }
