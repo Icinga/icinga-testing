@@ -56,6 +56,7 @@ func NewDockerBinaryCreator(
 func (i *dockerBinaryCreator) CreateIcingaDb(
 	redis services.RedisServerBase,
 	rdb services.RelationalDatabase,
+	options ...services.IcingaDbOption,
 ) services.IcingaDbBase {
 	inst := &dockerBinaryInstance{
 		info: info{
@@ -70,8 +71,11 @@ func (i *dockerBinaryCreator) CreateIcingaDb(
 	if err != nil {
 		panic(err)
 	}
-	err = services.IcingaDb{IcingaDbBase: inst}.WriteConfig(configFile)
-	if err != nil {
+	idb := &services.IcingaDb{IcingaDbBase: inst}
+	for _, option := range options {
+		option(idb)
+	}
+	if err = idb.WriteConfig(configFile); err != nil {
 		panic(err)
 	}
 	inst.configFileName = configFile.Name()

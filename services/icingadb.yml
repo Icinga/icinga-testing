@@ -10,3 +10,4 @@ redis:
 logging:
   level: debug
   interval: 1s
+{{.Config}}

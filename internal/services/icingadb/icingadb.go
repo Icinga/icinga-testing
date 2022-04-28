@@ -6,7 +6,7 @@ import (
 )
 
 type Creator interface {
-	CreateIcingaDb(redis services.RedisServerBase, mysql services.RelationalDatabase) services.IcingaDbBase
+	CreateIcingaDb(redis services.RedisServerBase, mysql services.RelationalDatabase, options ...services.IcingaDbOption) services.IcingaDbBase
 	Cleanup()
 }
 
