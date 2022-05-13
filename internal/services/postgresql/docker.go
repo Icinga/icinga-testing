@@ -83,9 +83,12 @@ func NewDockerCreator(logger *zap.Logger, dockerClient *client.Client, container
 		containerName:  containerName,
 	}
 
+	db, err := d.rootConnection.openAsRoot("postgres")
+	defer func() { _ = db.Close() }()
+
 	for attempt := 1; ; attempt++ {
 		time.Sleep(1 * time.Second)
-		err := d.rootConnection.db.Ping()
+		err := db.Ping()
 		if err == nil {
 			break
 		} else if attempt == 60 {

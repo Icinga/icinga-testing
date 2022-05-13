@@ -40,7 +40,7 @@ func (m *rootConnection) CreateMysqlDatabase() services.MysqlDatabaseBase {
 
 	// I'm sorry for making the following three queries look like they are prone to SQL-injections, but it seems like
 	// MySQL does not support prepared statements for these queries. The values are not user-controlled, so it's fine.
-	_, err := m.db.Exec(fmt.Sprintf("CREATE USER %s IDENTIFIED WITH mysql_native_password BY '%s'", username, password))
+	_, err := m.db.Exec(fmt.Sprintf("CREATE USER %s IDENTIFIED BY '%s'", username, password))
 	if err != nil {
 		panic(err)
 	}
@@ -52,7 +52,8 @@ func (m *rootConnection) CreateMysqlDatabase() services.MysqlDatabaseBase {
 	if err != nil {
 		panic(err)
 	}
-	_, err = m.db.Exec(fmt.Sprintf("GRANT SESSION_VARIABLES_ADMIN ON *.* TO %s", username))
+	// SESSION_VARIABLES_ADMIN is only needed and supported on MySQL 8+, that magic comments only executes it there.
+	_, err = m.db.Exec(fmt.Sprintf("/*!80000 GRANT SESSION_VARIABLES_ADMIN ON *.* TO %s */", username))
 	if err != nil {
 		panic(err)
 	}
