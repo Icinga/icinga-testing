@@ -8,6 +8,7 @@
 //  - ICINGA_TESTING_MYSQL_IMAGE: MySQL/MariaDB container image to use (default: "mysql:latest")
 //  - ICINGA_TESTING_PGSQL_IMAGE: PostgreSQL container image to use (default: "postgres:latest")
 //  - ICINGA_TESTING_REDIS_IMAGE: Redis container image to use (default: "redis:latest")
+//  - ICINGA_TESTING_REDIS_MONITOR: If set to "1", log all Redis commands to the debug log using redis-cli monitor
 //  - ICINGA_TESTING_ICINGADB_BINARY: Path to the Icinga DB binary to test. It will run in a container and therefore
 //                                    must be compiled using CGO_ENABLED=0
 //  - ICINGA_TESTING_ICINGADB_SCHEMA_MYSQL: Path to the full Icinga DB schema file for MySQL/MariaDB

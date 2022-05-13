@@ -10,6 +10,7 @@ import (
 	"github.com/icinga/icinga-testing/services"
 	"github.com/icinga/icinga-testing/utils"
 	"go.uber.org/zap"
+	"os"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -108,6 +109,23 @@ func (r *dockerCreator) CreateRedisServer() services.RedisServerBase {
 	}
 	if err := c.Close(); err != nil {
 		panic(err)
+	}
+
+	if os.Getenv("ICINGA_TESTING_REDIS_MONITOR") == "1" {
+		go func() {
+			stdout := utils.NewLineWriter(func(line []byte) {
+				r.logger.Debug("redis-cli monitor", zap.ByteString("command", line))
+			})
+			stderr := utils.NewLineWriter(func(line []byte) {
+				r.logger.Debug("redis-cli monitor", zap.ByteString("error", line))
+			})
+
+			cmd := []string{"redis-cli", "monitor"}
+			err := utils.DockerExec(context.Background(), r.dockerClient, logger, cont.ID, cmd, nil, stdout, stderr)
+			if err != nil {
+				r.logger.Debug("redis-cli monitor exited with an error", zap.Error(err))
+			}
+		}()
 	}
 
 	r.runningMutex.Lock()
