@@ -1,3 +1,17 @@
+// Package icingatesting contains helpers to facilitate performing integration tests between components of the Icinga
+// stack using the Go testing package. The general idea is to write test cases in Go that can dynamically spawn
+// individual components as required, connect them and then perform checks on this setup. This is implemented by using
+// the Docker API to start and stop containers locally as required by the tests.
+//
+// The following environment variables are used by icinga-testing:
+//  - ICINGA_TESTING_ICINGA2_IMAGE: Icinga 2 container image to use (default: "icinga/icinga2:master")
+//  - ICINGA_TESTING_MYSQL_IMAGE: MySQL/MariaDB container image to use (default: "mysql:latest")
+//  - ICINGA_TESTING_PGSQL_IMAGE: PostgreSQL container image to use (default: "postgres:latest")
+//  - ICINGA_TESTING_REDIS_IMAGE: Redis container image to use (default: "redis:latest")
+//  - ICINGA_TESTING_ICINGADB_BINARY: Path to the Icinga DB binary to test. It will run in a container and therefore
+//                                    must be compiled using CGO_ENABLED=0
+//  - ICINGA_TESTING_ICINGADB_SCHEMA_MYSQL: Path to the full Icinga DB schema file for MySQL/MariaDB
+//  - ICINGA_TESTING_ICINGADB_SCHEMA_PGSQL: Path to the full Icinga DB schema file for PostgreSQL
 package icingatesting
 
 import (
