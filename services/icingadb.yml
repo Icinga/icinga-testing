@@ -6,7 +6,8 @@ database:
   user: {{.RelationalDatabase.Username}}
   password: {{.RelationalDatabase.Password}}
 redis:
-  address: {{.Redis.Host}}:{{.Redis.Port}}
+  host: {{.Redis.Host}}
+  port: {{.Redis.Port}}
 logging:
   level: debug
   interval: 1s
