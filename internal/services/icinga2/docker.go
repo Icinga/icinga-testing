@@ -127,7 +127,7 @@ func (i *dockerCreator) CreateIcinga2(name string) services.Icinga2Base {
 func (i *dockerCreator) Cleanup() {
 	i.runningMutex.Lock()
 	nodes := make([]*dockerInstance, 0, len(i.running))
-	for n, _ := range i.running {
+	for n := range i.running {
 		nodes = append(nodes, n)
 	}
 	i.runningMutex.Unlock()
