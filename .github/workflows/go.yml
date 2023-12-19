@@ -10,29 +10,29 @@ jobs:
   fmt:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
-      - uses: actions/setup-go@v2
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
         with:
-          go-version: '^1.16'
+          go-version: stable
       - name: go fmt
         run: test -z "$(gofmt -d . | tee /dev/stderr)"
 
   vet:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
-      - uses: actions/setup-go@v2
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
         with:
-          go-version: '^1.16'
+          go-version: stable
       - name: go vet
         run: go vet ./...
 
   test:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
-      - uses: actions/setup-go@v2
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
         with:
-          go-version: '^1.16'
+          go-version: stable
       - name: go test
         run: go test ./...

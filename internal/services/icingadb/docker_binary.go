@@ -152,7 +152,7 @@ func (i *dockerBinaryCreator) CreateIcingaDb(
 func (i *dockerBinaryCreator) Cleanup() {
 	i.runningMutex.Lock()
 	instances := make([]*dockerBinaryInstance, 0, len(i.running))
-	for inst, _ := range i.running {
+	for inst := range i.running {
 		instances = append(instances, inst)
 	}
 	i.runningMutex.Unlock()

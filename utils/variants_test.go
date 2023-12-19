@@ -57,14 +57,14 @@ func TestMakeVariantsAsBaseTypeSlice(t *testing.T) {
 
 	want := []T{
 		// Base
-		T{},
+		{},
 
 		// A: {23, 42}
-		T{A: 23},
-		T{A: 42},
+		{A: 23},
+		{A: 42},
 
 		// B: {1337}
-		T{B: 1337},
+		{B: 1337},
 	}
 
 	if !reflect.DeepEqual(got, want) {

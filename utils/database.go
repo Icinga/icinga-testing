@@ -19,8 +19,7 @@ type DB interface {
 //
 // Example usage:
 //
-//     t.Log(utils.MustT(t).String(utils.PrettySelect(db, "SELECT * FROM somewhere")))
-//
+//	t.Log(utils.MustT(t).String(utils.PrettySelect(db, "SELECT * FROM somewhere")))
 func PrettySelect(db DB, query string, args ...interface{}) (string, error) {
 	cursor, err := db.Query(query, args...)
 	if err != nil {

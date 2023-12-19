@@ -4,15 +4,15 @@
 // the Docker API to start and stop containers locally as required by the tests.
 //
 // The following environment variables are used by icinga-testing:
-//  - ICINGA_TESTING_ICINGA2_IMAGE: Icinga 2 container image to use (default: "icinga/icinga2:master")
-//  - ICINGA_TESTING_MYSQL_IMAGE: MySQL/MariaDB container image to use (default: "mysql:latest")
-//  - ICINGA_TESTING_PGSQL_IMAGE: PostgreSQL container image to use (default: "postgres:latest")
-//  - ICINGA_TESTING_REDIS_IMAGE: Redis container image to use (default: "redis:latest")
-//  - ICINGA_TESTING_REDIS_MONITOR: If set to "1", log all Redis commands to the debug log using redis-cli monitor
-//  - ICINGA_TESTING_ICINGADB_BINARY: Path to the Icinga DB binary to test. It will run in a container and therefore
-//                                    must be compiled using CGO_ENABLED=0
-//  - ICINGA_TESTING_ICINGADB_SCHEMA_MYSQL: Path to the full Icinga DB schema file for MySQL/MariaDB
-//  - ICINGA_TESTING_ICINGADB_SCHEMA_PGSQL: Path to the full Icinga DB schema file for PostgreSQL
+//   - ICINGA_TESTING_ICINGA2_IMAGE: Icinga 2 container image to use (default: "icinga/icinga2:master")
+//   - ICINGA_TESTING_MYSQL_IMAGE: MySQL/MariaDB container image to use (default: "mysql:latest")
+//   - ICINGA_TESTING_PGSQL_IMAGE: PostgreSQL container image to use (default: "postgres:latest")
+//   - ICINGA_TESTING_REDIS_IMAGE: Redis container image to use (default: "redis:latest")
+//   - ICINGA_TESTING_REDIS_MONITOR: If set to "1", log all Redis commands to the debug log using redis-cli monitor
+//   - ICINGA_TESTING_ICINGADB_BINARY: Path to the Icinga DB binary to test. It will run in a container and therefore
+//     must be compiled using CGO_ENABLED=0
+//   - ICINGA_TESTING_ICINGADB_SCHEMA_MYSQL: Path to the full Icinga DB schema file for MySQL/MariaDB
+//   - ICINGA_TESTING_ICINGADB_SCHEMA_PGSQL: Path to the full Icinga DB schema file for PostgreSQL
 package icingatesting
 
 import (
@@ -41,14 +41,14 @@ import (
 // The intended use is to create a global variable of type *IT in the test package and then initialize it in TestMain
 // to allow the individual Test* functions to make use of it to dynamically start services as required:
 //
-//   var it *icingatesting.IT
+//	var it *icingatesting.IT
 //
-//   func TestMain(m *testing.M) {
-//       it = icingatesting.NewIT()
-//       defer it.Cleanup()
+//	func TestMain(m *testing.M) {
+//	    it = icingatesting.NewIT()
+//	    defer it.Cleanup()
 //
-//       m.Run()
-//    }
+//	    m.Run()
+//	 }
 type IT struct {
 	mutex           sync.Mutex
 	deferredCleanup []func()
