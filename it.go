@@ -4,15 +4,18 @@
 // the Docker API to start and stop containers locally as required by the tests.
 //
 // The following environment variables are used by icinga-testing:
-//  - ICINGA_TESTING_ICINGA2_IMAGE: Icinga 2 container image to use (default: "icinga/icinga2:master")
-//  - ICINGA_TESTING_MYSQL_IMAGE: MySQL/MariaDB container image to use (default: "mysql:latest")
-//  - ICINGA_TESTING_PGSQL_IMAGE: PostgreSQL container image to use (default: "postgres:latest")
-//  - ICINGA_TESTING_REDIS_IMAGE: Redis container image to use (default: "redis:latest")
-//  - ICINGA_TESTING_REDIS_MONITOR: If set to "1", log all Redis commands to the debug log using redis-cli monitor
-//  - ICINGA_TESTING_ICINGADB_BINARY: Path to the Icinga DB binary to test. It will run in a container and therefore
-//                                    must be compiled using CGO_ENABLED=0
-//  - ICINGA_TESTING_ICINGADB_SCHEMA_MYSQL: Path to the full Icinga DB schema file for MySQL/MariaDB
-//  - ICINGA_TESTING_ICINGADB_SCHEMA_PGSQL: Path to the full Icinga DB schema file for PostgreSQL
+//   - ICINGA_TESTING_ICINGA2_IMAGE: Icinga 2 container image to use (default: "icinga/icinga2:master")
+//   - ICINGA_TESTING_MYSQL_IMAGE: MySQL/MariaDB container image to use (default: "mysql:latest")
+//   - ICINGA_TESTING_PGSQL_IMAGE: PostgreSQL container image to use (default: "postgres:latest")
+//   - ICINGA_TESTING_REDIS_IMAGE: Redis container image to use (default: "redis:latest")
+//   - ICINGA_TESTING_REDIS_MONITOR: If set to "1", log all Redis commands to the debug log using redis-cli monitor
+//   - ICINGA_TESTING_ICINGADB_BINARY: Path to the Icinga DB binary to test. It will run in a container and therefore
+//     must be compiled using CGO_ENABLED=0
+//   - ICINGA_TESTING_ICINGADB_SCHEMA_MYSQL: Path to the full Icinga DB schema file for MySQL/MariaDB
+//   - ICINGA_TESTING_ICINGADB_SCHEMA_PGSQL: Path to the full Icinga DB schema file for PostgreSQL
+//   - ICINGA_TESTING_ICINGA_NOTIFICATIONS_SHARED_DIR: Shared path between the Icinga Notifications container and the
+//     host to, e.g., share a fifo for the file channel.
+//   - ICINGA_TESTING_ICINGA_NOTIFICATIONS_SCHEMA_PGSQL: Path to the full Icinga Notifications PostgreSQL schema file
 package icingatesting
 
 import (
@@ -24,6 +27,7 @@ import (
 	"github.com/icinga/icinga-testing/internal/services/icinga2"
 	"github.com/icinga/icinga-testing/internal/services/icingadb"
 	"github.com/icinga/icinga-testing/internal/services/mysql"
+	"github.com/icinga/icinga-testing/internal/services/notifications"
 	"github.com/icinga/icinga-testing/internal/services/postgresql"
 	"github.com/icinga/icinga-testing/internal/services/redis"
 	"github.com/icinga/icinga-testing/services"
@@ -41,27 +45,28 @@ import (
 // The intended use is to create a global variable of type *IT in the test package and then initialize it in TestMain
 // to allow the individual Test* functions to make use of it to dynamically start services as required:
 //
-//   var it *icingatesting.IT
+//	var it *icingatesting.IT
 //
-//   func TestMain(m *testing.M) {
-//       it = icingatesting.NewIT()
-//       defer it.Cleanup()
+//	func TestMain(m *testing.M) {
+//	    it = icingatesting.NewIT()
+//	    defer it.Cleanup()
 //
-//       m.Run()
-//    }
+//	    m.Run()
+//	 }
 type IT struct {
-	mutex           sync.Mutex
-	deferredCleanup []func()
-	prefix          string
-	dockerClient    *client.Client
-	dockerNetworkId string
-	mysql           mysql.Creator
-	postgresql      postgresql.Creator
-	redis           redis.Creator
-	icinga2         icinga2.Creator
-	icingaDb        icingadb.Creator
-	logger          *zap.Logger
-	loggerDebugCore zapcore.Core
+	mutex               sync.Mutex
+	deferredCleanup     []func()
+	prefix              string
+	dockerClient        *client.Client
+	dockerNetworkId     string
+	mysql               mysql.Creator
+	postgresql          postgresql.Creator
+	redis               redis.Creator
+	icinga2             icinga2.Creator
+	icingaDb            icingadb.Creator
+	icingaNotifications notifications.Creator
+	logger              *zap.Logger
+	loggerDebugCore     zapcore.Core
 }
 
 var flagDebugLog = flag.String("icingatesting.debuglog", "", "file to write debug log to")
@@ -272,9 +277,6 @@ func (it *IT) getIcingaDb() icingadb.Creator {
 }
 
 // IcingaDbInstance starts a new Icinga DB instance.
-//
-// It expects the ICINGA_TESTING_ICINGADB_BINARY environment variable to be set to the path of a precompiled icingadb
-// binary which is then started in a new Docker container when this function is called.
 func (it *IT) IcingaDbInstance(redis services.RedisServer, rdb services.RelationalDatabase, options ...services.IcingaDbOption) services.IcingaDb {
 	return services.IcingaDb{IcingaDbBase: it.getIcingaDb().CreateIcingaDb(redis, rdb, options...)}
 }
@@ -284,6 +286,42 @@ func (it *IT) IcingaDbInstanceT(
 	t testing.TB, redis services.RedisServer, rdb services.RelationalDatabase, options ...services.IcingaDbOption,
 ) services.IcingaDb {
 	i := it.IcingaDbInstance(redis, rdb, options...)
+	t.Cleanup(i.Cleanup)
+	return i
+}
+
+func (it *IT) getIcingaNotifications() notifications.Creator {
+	shareDir, ok := os.LookupEnv("ICINGA_TESTING_ICINGA_NOTIFICATIONS_SHARED_DIR")
+	if !ok {
+		panic("environment variable ICINGA_TESTING_ICINGA_NOTIFICATIONS_SHARED_DIR must be set")
+	}
+
+	it.mutex.Lock()
+	defer it.mutex.Unlock()
+
+	if it.icingaNotifications == nil {
+		it.icingaNotifications = notifications.NewDockerCreator(
+			it.logger, it.dockerClient, it.prefix+"-icinga-notifications", it.dockerNetworkId, shareDir)
+		it.deferCleanup(it.icingaNotifications.Cleanup)
+	}
+
+	return it.icingaNotifications
+}
+
+// IcingaNotificationsInstance starts a new Icinga Notifications instance.
+func (it *IT) IcingaNotificationsInstance(
+	rdb services.RelationalDatabase, options ...services.IcingaNotificationsOption,
+) services.IcingaNotifications {
+	return services.IcingaNotifications{
+		IcingaNotificationsBase: it.getIcingaNotifications().CreateIcingaNotifications(rdb, options...),
+	}
+}
+
+// IcingaNotificationsInstanceT creates a new Icinga Notifications instance and registers its cleanup function with testing.T.
+func (it *IT) IcingaNotificationsInstanceT(
+	t testing.TB, rdb services.RelationalDatabase, options ...services.IcingaNotificationsOption,
+) services.IcingaNotifications {
+	i := it.IcingaNotificationsInstance(rdb, options...)
 	t.Cleanup(i.Cleanup)
 	return i
 }

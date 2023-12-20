@@ -1,4 +1,4 @@
-package icingadb
+package notifications
 
 import (
 	"context"
@@ -12,65 +12,63 @@ import (
 	"github.com/icinga/icinga-testing/utils"
 	"go.uber.org/zap"
 	"os"
-	"path/filepath"
 	"sync"
 	"sync/atomic"
 )
 
-type dockerBinaryCreator struct {
+type dockerCreator struct {
 	logger              *zap.Logger
 	dockerClient        *client.Client
 	dockerNetworkId     string
 	containerNamePrefix string
-	binaryPath          string
+	sharedDirPath       string
 	containerCounter    uint32
 
 	runningMutex sync.Mutex
 	running      map[*dockerBinaryInstance]struct{}
 }
 
-var _ Creator = (*dockerBinaryCreator)(nil)
+var _ Creator = (*dockerCreator)(nil)
 
-func NewDockerBinaryCreator(
+func NewDockerCreator(
 	logger *zap.Logger,
 	dockerClient *client.Client,
 	containerNamePrefix string,
 	dockerNetworkId string,
-	binaryPath string,
+	sharedDirPath string,
 ) Creator {
-	binaryPath, err := filepath.Abs(binaryPath)
-	if err != nil {
-		panic(err)
-	}
-	return &dockerBinaryCreator{
-		logger:              logger.With(zap.Bool("icingadb", true)),
+	return &dockerCreator{
+		logger:              logger.With(zap.Bool("icinga_notifications", true)),
 		dockerClient:        dockerClient,
 		dockerNetworkId:     dockerNetworkId,
 		containerNamePrefix: containerNamePrefix,
-		binaryPath:          binaryPath,
+		sharedDirPath:       sharedDirPath,
 		running:             make(map[*dockerBinaryInstance]struct{}),
 	}
 }
 
-func (i *dockerBinaryCreator) CreateIcingaDb(
-	redis services.RedisServerBase,
+func (i *dockerCreator) CreateIcingaNotifications(
 	rdb services.RelationalDatabase,
-	options ...services.IcingaDbOption,
-) services.IcingaDbBase {
+	options ...services.IcingaNotificationsOption,
+) services.IcingaNotificationsBase {
 	inst := &dockerBinaryInstance{
 		info: info{
-			redis: redis,
-			rdb:   rdb,
+			rdb:  rdb,
+			port: defaultPort,
 		},
-		logger:               i.logger,
-		icingaDbDockerBinary: i,
+		logger:                          i.logger,
+		icingaNotificationsDockerBinary: i,
 	}
 
-	configFile, err := os.CreateTemp("", "icingadb.yml")
+	configFile, err := os.CreateTemp("", "icinga_notifications.yml")
 	if err != nil {
 		panic(err)
 	}
-	idb := &services.IcingaDb{IcingaDbBase: inst}
+	err = configFile.Chmod(0666) // defaults to 0600, might result in being unreadable from container UID 1000
+	if err != nil {
+		panic(err)
+	}
+	idb := &services.IcingaNotifications{IcingaNotificationsBase: inst}
 	for _, option := range options {
 		option(idb)
 	}
@@ -90,7 +88,7 @@ func (i *dockerBinaryCreator) CreateIcingaDb(
 		panic(err)
 	}
 
-	dockerImage := "alpine:latest"
+	dockerImage := utils.GetEnvDefault("ICINGA_TESTING_NOTIFICATIONS_IMAGE", "icinga-notifications:latest")
 	err = utils.DockerImagePull(context.Background(), inst.logger, i.dockerClient, dockerImage, false)
 	if err != nil {
 		panic(err)
@@ -98,17 +96,16 @@ func (i *dockerBinaryCreator) CreateIcingaDb(
 
 	cont, err := i.dockerClient.ContainerCreate(context.Background(), &container.Config{
 		Image: dockerImage,
-		Cmd:   []string{"/icingadb", "--config", "/icingadb.yml"},
 	}, &container.HostConfig{
 		Mounts: []mount.Mount{{
 			Type:     mount.TypeBind,
-			Source:   i.binaryPath,
-			Target:   "/icingadb",
+			Source:   inst.configFileName,
+			Target:   "/etc/icinga-notifications/config.yml",
 			ReadOnly: true,
 		}, {
 			Type:     mount.TypeBind,
-			Source:   inst.configFileName,
-			Target:   "/icingadb.yml",
+			Source:   i.sharedDirPath,
+			Target:   "/shared",
 			ReadOnly: true,
 		}},
 	}, &network.NetworkingConfig{
@@ -119,7 +116,7 @@ func (i *dockerBinaryCreator) CreateIcingaDb(
 		},
 	}, nil, containerName)
 	if err != nil {
-		inst.logger.Fatal("failed to create icingadb container", zap.Error(err))
+		inst.logger.Fatal("failed to create icinga-notifications container", zap.Error(err))
 	}
 	inst.containerId = cont.ID
 	inst.logger = inst.logger.With(zap.String("container-id", cont.ID))
@@ -131,8 +128,7 @@ func (i *dockerBinaryCreator) CreateIcingaDb(
 				zap.ByteString("line", line))
 		}))
 	if err != nil {
-		inst.logger.Fatal("failed to attach to container output",
-			zap.Error(err))
+		inst.logger.Fatal("failed to attach to container output", zap.Error(err))
 	}
 
 	err = i.dockerClient.ContainerStart(context.Background(), cont.ID, types.ContainerStartOptions{})
@@ -141,6 +137,8 @@ func (i *dockerBinaryCreator) CreateIcingaDb(
 	}
 	inst.logger.Debug("started container")
 
+	inst.info.host = utils.MustString(utils.DockerContainerAddress(context.Background(), i.dockerClient, cont.ID))
+
 	i.runningMutex.Lock()
 	i.running[inst] = struct{}{}
 	i.runningMutex.Unlock()
@@ -148,10 +146,10 @@ func (i *dockerBinaryCreator) CreateIcingaDb(
 	return inst
 }
 
-func (i *dockerBinaryCreator) Cleanup() {
+func (i *dockerCreator) Cleanup() {
 	i.runningMutex.Lock()
 	instances := make([]*dockerBinaryInstance, 0, len(i.running))
-	for inst, _ := range i.running {
+	for inst := range i.running {
 		instances = append(instances, inst)
 	}
 	i.runningMutex.Unlock()
@@ -163,20 +161,20 @@ func (i *dockerBinaryCreator) Cleanup() {
 
 type dockerBinaryInstance struct {
 	info
-	icingaDbDockerBinary *dockerBinaryCreator
-	logger               *zap.Logger
-	containerId          string
-	configFileName       string
+	icingaNotificationsDockerBinary *dockerCreator
+	logger                          *zap.Logger
+	containerId                     string
+	configFileName                  string
 }
 
-var _ services.IcingaDbBase = (*dockerBinaryInstance)(nil)
+var _ services.IcingaNotificationsBase = (*dockerBinaryInstance)(nil)
 
 func (i *dockerBinaryInstance) Cleanup() {
-	i.icingaDbDockerBinary.runningMutex.Lock()
-	delete(i.icingaDbDockerBinary.running, i)
-	i.icingaDbDockerBinary.runningMutex.Unlock()
+	i.icingaNotificationsDockerBinary.runningMutex.Lock()
+	delete(i.icingaNotificationsDockerBinary.running, i)
+	i.icingaNotificationsDockerBinary.runningMutex.Unlock()
 
-	err := i.icingaDbDockerBinary.dockerClient.ContainerRemove(context.Background(), i.containerId, types.ContainerRemoveOptions{
+	err := i.icingaNotificationsDockerBinary.dockerClient.ContainerRemove(context.Background(), i.containerId, types.ContainerRemoveOptions{
 		Force:         true,
 		RemoveVolumes: true,
 	})
