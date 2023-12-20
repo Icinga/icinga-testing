@@ -1,0 +1,16 @@
+listen: ":{{.Port}}"
+channel-plugin-dir: /usr/libexec/icinga-notifications/channel
+
+database:
+  type: {{.RelationalDatabase.IcingaDbType}}
+  host: {{.RelationalDatabase.Host}}
+  port: {{.RelationalDatabase.Port}}
+  database: {{.RelationalDatabase.Database}}
+  user: {{.RelationalDatabase.Username}}
+  password: {{.RelationalDatabase.Password}}
+
+logging:
+  level: debug
+  interval: 1s
+
+{{.Config}}
