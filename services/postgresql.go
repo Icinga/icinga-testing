@@ -59,8 +59,7 @@ func (p PostgresqlDatabase) Open() (*sql.DB, error) {
 	return sql.Open(p.Driver(), p.DSN())
 }
 
-func (p PostgresqlDatabase) ImportIcingaDbSchema() {
-	key := "ICINGA_TESTING_ICINGADB_SCHEMA_PGSQL"
+func (p PostgresqlDatabase) importSchema(key string) {
 	schemaFile, ok := os.LookupEnv(key)
 	if !ok {
 		panic(fmt.Errorf("environment variable %s must be set", key))
@@ -68,7 +67,7 @@ func (p PostgresqlDatabase) ImportIcingaDbSchema() {
 
 	schema, err := os.ReadFile(schemaFile)
 	if err != nil {
-		panic(fmt.Errorf("failed to read icingadb schema file %q: %w", schemaFile, err))
+		panic(fmt.Errorf("failed to read %s schema file %q: %w", key, schemaFile, err))
 	}
 
 	db, err := PostgresqlDatabase{PostgresqlDatabaseBase: p}.Open()
@@ -78,4 +77,12 @@ func (p PostgresqlDatabase) ImportIcingaDbSchema() {
 	if _, err := db.Exec(string(schema)); err != nil {
 		panic(err)
 	}
+}
+
+func (p PostgresqlDatabase) ImportIcingaDbSchema() {
+	p.importSchema("ICINGA_TESTING_ICINGADB_SCHEMA_PGSQL")
+}
+
+func (p PostgresqlDatabase) ImportIcingaNotificationsSchema() {
+	p.importSchema("ICINGA_TESTING_ICINGA_NOTIFICATIONS_SCHEMA_PGSQL")
 }
