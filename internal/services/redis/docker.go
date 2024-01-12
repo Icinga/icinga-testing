@@ -138,7 +138,7 @@ func (r *dockerCreator) CreateRedisServer() services.RedisServerBase {
 func (r *dockerCreator) Cleanup() {
 	r.runningMutex.Lock()
 	servers := make([]*dockerServer, 0, len(r.running))
-	for s, _ := range r.running {
+	for s := range r.running {
 		servers = append(servers, s)
 	}
 	r.runningMutex.Unlock()
