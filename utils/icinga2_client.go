@@ -36,7 +36,9 @@ func NewIcinga2Client(address string, username string, password string) *Icinga2
 }
 
 func (c *Icinga2Client) addJsonHeaders(req *http.Request) {
-	req.Header.Add("Accept", "application/json")
+	if req.Method != http.MethodGet {
+		req.Header.Add("Accept", "application/json")
+	}
 	if req.Body != nil {
 		req.Header.Add("Content-Type", "application/json")
 	}
