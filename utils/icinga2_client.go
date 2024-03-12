@@ -9,6 +9,7 @@ import (
 	"io"
 	"net/http"
 	"testing"
+	"time"
 )
 
 type Icinga2Client struct {
@@ -32,6 +33,39 @@ func NewIcinga2Client(address string, username string, password string) *Icinga2
 				},
 			},
 		},
+	}
+}
+
+// getNoBody successfully returns http.NoBody.
+func getNoBody() (io.ReadCloser, error) {
+	return http.NoBody, nil
+}
+
+func (c *Icinga2Client) Do(req *http.Request) (*http.Response, error) {
+	if req.Body == nil && req.GetBody == nil {
+		req.Body = http.NoBody
+		req.GetBody = getNoBody
+	}
+
+	for attempt := 1; ; attempt++ {
+		response, err := c.Client.Do(req)
+		if err == nil && response.StatusCode == http.StatusServiceUnavailable && req.GetBody != nil && attempt < 300 {
+			if body, err := req.GetBody(); err == nil {
+				_ = response.Body.Close()
+				req.Body = body
+				ctx := req.Context()
+
+				select {
+				case <-time.After(time.Second):
+				case <-ctx.Done():
+					return nil, ctx.Err()
+				}
+
+				continue
+			}
+		}
+
+		return response, err
 	}
 }
 
