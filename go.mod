@@ -5,14 +5,11 @@ go 1.16
 require (
 	github.com/Icinga/go-libs v0.0.0-20220420130327-ef58ad52edd8
 	github.com/Microsoft/go-winio v0.6.1 // indirect
-	github.com/cespare/xxhash/v2 v2.2.0 // indirect
 	github.com/distribution/reference v0.5.0 // indirect
 	github.com/docker/distribution v2.8.3+incompatible // indirect
 	github.com/docker/docker v24.0.7+incompatible
 	github.com/docker/go-connections v0.4.0 // indirect
 	github.com/docker/go-units v0.5.0 // indirect
-	github.com/fsnotify/fsnotify v1.6.0 // indirect
-	github.com/go-redis/redis/v8 v8.11.5
 	github.com/go-sql-driver/mysql v1.7.1
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/google/go-cmp v0.6.0 // indirect
@@ -21,8 +18,8 @@ require (
 	github.com/mattn/go-sqlite3 v1.14.15 // indirect
 	github.com/moby/term v0.0.0-20220808134915-39b0c02b01ae // indirect
 	github.com/morikuni/aec v1.0.0 // indirect
-	github.com/onsi/gomega v1.24.2 // indirect
 	github.com/opencontainers/image-spec v1.1.0-rc5 // indirect
+	github.com/redis/go-redis/v9 v9.5.1
 	github.com/rogpeppe/go-internal v1.10.0 // indirect
 	github.com/stretchr/testify v1.8.4
 	go.uber.org/goleak v1.2.1 // indirect
