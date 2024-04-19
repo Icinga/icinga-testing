@@ -40,6 +40,9 @@ type Icinga2Base interface {
 	// EnableIcingaDb enables the icingadb feature on this node using the connection details of redis.
 	EnableIcingaDb(redis RedisServerBase)
 
+	// EnableIcingaNotifications enables the Icinga Notifications integration with the custom configuration.
+	EnableIcingaNotifications(IcingaNotificationsBase)
+
 	// Cleanup stops the node and removes everything that was created to start this node.
 	Cleanup()
 }
@@ -127,4 +130,17 @@ func (i Icinga2) WriteIcingaDbConf(r RedisServerBase) {
 		panic(err)
 	}
 	i.WriteConfig(fmt.Sprintf("etc/icinga2/features-enabled/icingadb_%s_%s.conf", r.Host(), r.Port()), b.Bytes())
+}
+
+//go:embed icinga2_icinga_notifications.conf
+var icinga2IcingaNotificationsConfRawTemplate string
+var icinga2IcingaNotificationsConfTemplate = template.Must(template.New("icinga-notifications.conf").Parse(icinga2IcingaNotificationsConfRawTemplate))
+
+func (i Icinga2) WriteIcingaNotificationsConf(notis IcingaNotificationsBase) {
+	b := bytes.NewBuffer(nil)
+	err := icinga2IcingaNotificationsConfTemplate.Execute(b, notis)
+	if err != nil {
+		panic(err)
+	}
+	i.WriteConfig("etc/icinga2/features-enabled/icinga_notifications.conf", b.Bytes())
 }
