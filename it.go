@@ -4,7 +4,7 @@
 // the Docker API to start and stop containers locally as required by the tests.
 //
 // The following environment variables are used by icinga-testing:
-//   - ICINGA_TESTING_ICINGA2_IMAGE: Icinga 2 container image to use (default: "icinga/icinga2:master")
+//   - ICINGA_TESTING_ICINGA2_IMAGE: Icinga 2 container image to use (default: "icinga/icinga2:edge")
 //   - ICINGA_TESTING_MYSQL_IMAGE: MySQL/MariaDB container image to use (default: "mysql:latest")
 //   - ICINGA_TESTING_PGSQL_IMAGE: PostgreSQL container image to use (default: "postgres:latest")
 //   - ICINGA_TESTING_REDIS_IMAGE: Redis container image to use (default: "redis:latest")
@@ -240,7 +240,7 @@ func (it *IT) getIcinga2() icinga2.Creator {
 
 // Icinga2Node creates a new Icinga 2 node.
 //
-// Each call to this function will spawn a dedicated Icinga 2 Docker container using the icinga/icinga2:master image.
+// Each call to this function will spawn a dedicated Icinga 2 Docker container using the icinga/icinga2:edge image.
 func (it *IT) Icinga2Node(name string) services.Icinga2 {
 	return services.Icinga2{Icinga2Base: it.getIcinga2().CreateIcinga2(name)}
 }
