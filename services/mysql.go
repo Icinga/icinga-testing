@@ -3,7 +3,7 @@ package services
 import (
 	"database/sql"
 	"fmt"
-	icingasql "github.com/Icinga/go-libs/sql"
+	"github.com/icinga/icinga-go-library/database"
 	"os"
 )
 
@@ -67,7 +67,7 @@ func (m MysqlDatabase) ImportIcingaDbSchema() {
 		panic(err)
 	}
 
-	for _, stmt := range icingasql.MysqlSplitStatements(string(schema)) {
+	for _, stmt := range database.MysqlSplitStatements(string(schema)) {
 		if _, err := db.Exec(stmt); err != nil {
 			panic(err)
 		}
