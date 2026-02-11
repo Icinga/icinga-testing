@@ -28,6 +28,9 @@ type RelationalDatabase interface {
 	// ImportIcingaDbSchema imports the Icinga DB schema into this database.
 	ImportIcingaDbSchema()
 
+	// ImportIcingaNotificationsSchema imports the Icinga Notifications schema into this database.
+	ImportIcingaNotificationsSchema()
+
 	// Cleanup removes the database.
 	Cleanup()
 }
