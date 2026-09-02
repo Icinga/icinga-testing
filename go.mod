@@ -2,10 +2,9 @@ module github.com/icinga/icinga-testing
 
 go 1.24.0
 
-
 require (
 	github.com/docker/docker v24.0.7+incompatible
-	github.com/go-sql-driver/mysql v1.9.1
+	github.com/go-sql-driver/mysql v1.10.0
 	github.com/icinga/icinga-go-library v0.6.3
 	github.com/lib/pq v1.10.9
 	github.com/redis/go-redis/v9 v9.7.3
@@ -15,7 +14,7 @@ require (
 )
 
 require (
-	filippo.io/edwards25519 v1.1.0 // indirect
+	filippo.io/edwards25519 v1.2.0 // indirect
 	github.com/Microsoft/go-winio v0.6.1 // indirect
 	github.com/caarlos0/env/v11 v11.3.1 // indirect
 	github.com/cespare/xxhash/v2 v2.2.0 // indirect
