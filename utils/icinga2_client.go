@@ -70,7 +70,9 @@ func (c *Icinga2Client) Do(req *http.Request) (*http.Response, error) {
 }
 
 func (c *Icinga2Client) addJsonHeaders(req *http.Request) {
-	req.Header.Add("Accept", "application/json")
+	if req.Method != http.MethodGet {
+		req.Header.Add("Accept", "application/json")
+	}
 	if req.Body != nil {
 		req.Header.Add("Content-Type", "application/json")
 	}
