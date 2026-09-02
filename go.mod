@@ -5,7 +5,7 @@ go 1.25.0
 require (
 	github.com/docker/docker v24.0.7+incompatible
 	github.com/go-sql-driver/mysql v1.10.0
-	github.com/icinga/icinga-go-library v0.6.3
+	github.com/icinga/icinga-go-library v0.9.0
 	github.com/lib/pq v1.12.3
 	github.com/redis/go-redis/v9 v9.22.0
 	github.com/stretchr/testify v1.12.1
@@ -16,7 +16,7 @@ require (
 require (
 	filippo.io/edwards25519 v1.2.0 // indirect
 	github.com/Microsoft/go-winio v0.6.1 // indirect
-	github.com/caarlos0/env/v11 v11.3.1 // indirect
+	github.com/caarlos0/env/v11 v11.4.0 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/creasty/defaults v1.8.0 // indirect
 	github.com/distribution/reference v0.5.0 // indirect
