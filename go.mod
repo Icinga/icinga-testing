@@ -1,6 +1,6 @@
 module github.com/icinga/icinga-testing
 
-go 1.24.0
+go 1.25.0
 
 require (
 	github.com/docker/docker v24.0.7+incompatible
@@ -10,7 +10,7 @@ require (
 	github.com/redis/go-redis/v9 v9.22.0
 	github.com/stretchr/testify v1.12.1
 	go.uber.org/zap v1.28.0
-	golang.org/x/sync v0.12.0
+	golang.org/x/sync v0.22.0
 )
 
 require (
