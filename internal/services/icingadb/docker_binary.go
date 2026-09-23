@@ -11,7 +11,6 @@ import (
 	"github.com/icinga/icinga-testing/services"
 	"github.com/icinga/icinga-testing/utils"
 	"go.uber.org/zap"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"sync"
@@ -67,7 +66,7 @@ func (i *dockerBinaryCreator) CreateIcingaDb(
 		icingaDbDockerBinary: i,
 	}
 
-	configFile, err := ioutil.TempFile("", "icingadb.yml")
+	configFile, err := os.CreateTemp("", "icingadb.yml")
 	if err != nil {
 		panic(err)
 	}

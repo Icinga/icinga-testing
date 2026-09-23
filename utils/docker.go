@@ -34,6 +34,36 @@ func DockerNetworkName(ctx context.Context, client *client.Client, id string) (s
 	return net.Name, nil
 }
 
+// DockerNetworkHostAddress returns the host's IPv4 address on this Docker network, aka the gateway address.
+//
+// A service running on the host bound to this IP address (or 0.0.0.0) will be available within this Docker network
+// under this address for the containers.
+//
+// Note: In case of a configured firewall, one might need to allow incoming connections from Docker. For example:
+//
+//	# Allow all TCP ports from Docker, specified as the docker0 interface, to the host:
+//	iptables -I INPUT -i docker0 -p tcp -j ACCEPT
+//
+//	# Allow only connections to the TCP port 8080:
+//	iptables -I INPUT -i docker0 -p tcp --dport 8080 -j ACCEPT
+//
+//	# Within a custom docker network, it might become necessary to allow incoming connections from a bridge interface.
+//	# The following command would allow all local TCP ports from all interfaces starting with "br-":
+//	iptables -I INPUT -i br-+ -p tcp -j ACCEPT
+func DockerNetworkHostAddress(ctx context.Context, client *client.Client, id string) (string, error) {
+	net, err := client.NetworkInspect(ctx, id, types.NetworkInspectOptions{})
+	if err != nil {
+		return "", err
+	}
+
+	ipamConfs := net.IPAM.Config
+	if len(ipamConfs) != 1 {
+		return "", fmt.Errorf("docker network %q has not one IPAM config, but %d", id, len(ipamConfs))
+	}
+
+	return ipamConfs[0].Gateway, nil
+}
+
 // ForwardDockerContainerOutput attaches to a docker container and forwards all its output to a writer.
 func ForwardDockerContainerOutput(
 	ctx context.Context, client *client.Client, containerId string, logs bool, w io.Writer,

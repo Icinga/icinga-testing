@@ -13,17 +13,23 @@
 //     must be compiled using CGO_ENABLED=0
 //   - ICINGA_TESTING_ICINGADB_SCHEMA_MYSQL: Path to the full Icinga DB schema file for MySQL/MariaDB
 //   - ICINGA_TESTING_ICINGADB_SCHEMA_PGSQL: Path to the full Icinga DB schema file for PostgreSQL
+//   - ICINGA_TESTING_ICINGA_NOTIFICATIONS_SCHEMA_PGSQL: Path to the full Icinga Notifications PostgreSQL schema file
 package icingatesting
 
 import (
 	"context"
 	"flag"
 	"fmt"
+	"os"
+	"sync"
+	"testing"
+
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/client"
 	"github.com/icinga/icinga-testing/internal/services/icinga2"
 	"github.com/icinga/icinga-testing/internal/services/icingadb"
 	"github.com/icinga/icinga-testing/internal/services/mysql"
+	"github.com/icinga/icinga-testing/internal/services/notifications"
 	"github.com/icinga/icinga-testing/internal/services/postgresql"
 	"github.com/icinga/icinga-testing/internal/services/redis"
 	"github.com/icinga/icinga-testing/services"
@@ -31,9 +37,6 @@ import (
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 	"go.uber.org/zap/zaptest"
-	"os"
-	"sync"
-	"testing"
 )
 
 // IT is the core type to start interacting with this module.
@@ -50,18 +53,20 @@ import (
 //		m.Run()
 //	}
 type IT struct {
-	mutex           sync.Mutex
-	deferredCleanup []func()
-	prefix          string
-	dockerClient    *client.Client
-	dockerNetworkId string
-	mysql           mysql.Creator
-	postgresql      postgresql.Creator
-	redis           redis.Creator
-	icinga2         icinga2.Creator
-	icingaDb        icingadb.Creator
-	logger          *zap.Logger
-	loggerDebugCore zapcore.Core
+	mutex                              sync.Mutex
+	deferredCleanup                    []func()
+	prefix                             string
+	dockerClient                       *client.Client
+	dockerNetworkId                    string
+	mysql                              mysql.Creator
+	postgresql                         postgresql.Creator
+	redis                              redis.Creator
+	icinga2                            icinga2.Creator
+	icingaDb                           icingadb.Creator
+	icingaNotifications                notifications.Creator
+	icingaNotificationsWebhookReceiver *services.IcingaNotificationsWebhookReceiver
+	logger                             *zap.Logger
+	loggerDebugCore                    zapcore.Core
 }
 
 var flagDebugLog = flag.String("icingatesting.debuglog", "", "file to write debug log to")
@@ -272,9 +277,6 @@ func (it *IT) getIcingaDb() icingadb.Creator {
 }
 
 // IcingaDbInstance starts a new Icinga DB instance.
-//
-// It expects the ICINGA_TESTING_ICINGADB_BINARY environment variable to be set to the path of a precompiled icingadb
-// binary which is then started in a new Docker container when this function is called.
 func (it *IT) IcingaDbInstance(redis services.RedisServer, rdb services.RelationalDatabase, options ...services.IcingaDbOption) services.IcingaDb {
 	return services.IcingaDb{IcingaDbBase: it.getIcingaDb().CreateIcingaDb(redis, rdb, options...)}
 }
@@ -286,6 +288,70 @@ func (it *IT) IcingaDbInstanceT(
 	i := it.IcingaDbInstance(redis, rdb, options...)
 	t.Cleanup(i.Cleanup)
 	return i
+}
+
+func (it *IT) getIcingaNotifications() notifications.Creator {
+	it.mutex.Lock()
+	defer it.mutex.Unlock()
+
+	if it.icingaNotifications == nil {
+		it.icingaNotifications = notifications.NewDockerCreator(it.logger, it.dockerClient, it.prefix+"-icinga-notifications", it.dockerNetworkId)
+		it.deferCleanup(it.icingaNotifications.Cleanup)
+	}
+
+	return it.icingaNotifications
+}
+
+// IcingaNotificationsInstance starts a new Icinga Notifications instance.
+func (it *IT) IcingaNotificationsInstance(
+	rdb services.RelationalDatabase, options ...services.IcingaNotificationsOption,
+) services.IcingaNotifications {
+	return services.IcingaNotifications{
+		IcingaNotificationsBase: it.getIcingaNotifications().CreateIcingaNotifications(rdb, options...),
+	}
+}
+
+// IcingaNotificationsInstanceT creates a new Icinga Notifications instance and registers its cleanup function with testing.T.
+func (it *IT) IcingaNotificationsInstanceT(
+	t testing.TB, rdb services.RelationalDatabase, options ...services.IcingaNotificationsOption,
+) services.IcingaNotifications {
+	i := it.IcingaNotificationsInstance(rdb, options...)
+	t.Cleanup(i.Cleanup)
+	return i
+}
+
+func (it *IT) getIcingaNotificationsWebhookReceiver() *services.IcingaNotificationsWebhookReceiver {
+	it.mutex.Lock()
+	defer it.mutex.Unlock()
+
+	if it.icingaNotificationsWebhookReceiver == nil {
+		networkHost, err := utils.DockerNetworkHostAddress(context.Background(), it.dockerClient, it.dockerNetworkId)
+		if err != nil {
+			it.logger.Fatal("cannot get docker host address", zap.Error(err))
+		}
+		port, err := utils.OpenTcpPort()
+		if err != nil {
+			it.logger.Fatal("cannot get an open TCP port", zap.Error(err))
+		}
+
+		webhookRec, err := services.LaunchIcingaNotificationsWebhookReceiver(fmt.Sprintf("%s:%d", networkHost, port))
+		if err != nil {
+			it.logger.Fatal("cannot launch Icinga Notifications webhook receiver", zap.Error(err))
+		}
+
+		it.icingaNotificationsWebhookReceiver = webhookRec
+		it.deferCleanup(it.icingaNotificationsWebhookReceiver.Cleanup)
+	}
+
+	return it.icingaNotificationsWebhookReceiver
+}
+
+// IcingaNotificationsWebhookReceiverInstanceT creates a new Icinga Notifications Webhook Receiver instance and
+// registers its cleanup function with testing.T.
+func (it *IT) IcingaNotificationsWebhookReceiverInstanceT(t testing.TB) *services.IcingaNotificationsWebhookReceiver {
+	webhookRec := it.getIcingaNotificationsWebhookReceiver()
+	t.Cleanup(webhookRec.Cleanup)
+	return webhookRec
 }
 
 // Logger returns a *zap.Logger which additionally logs the current test case name.

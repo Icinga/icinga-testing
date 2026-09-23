@@ -73,3 +73,7 @@ func (m MysqlDatabase) ImportIcingaDbSchema() {
 		}
 	}
 }
+
+func (m MysqlDatabase) ImportIcingaNotificationsSchema() {
+	panic("icinga-notifications does not support MySQL yet")
+}

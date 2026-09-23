@@ -189,6 +189,10 @@ func (n *dockerInstance) EnableIcingaDb(redis services.RedisServerBase) {
 	services.Icinga2{Icinga2Base: n}.WriteIcingaDbConf(redis)
 }
 
+func (n *dockerInstance) EnableIcingaNotifications(notis services.IcingaNotificationsBase) {
+	services.Icinga2{Icinga2Base: n}.WriteIcingaNotificationsConf(notis)
+}
+
 func (n *dockerInstance) Cleanup() {
 	n.icinga2Docker.runningMutex.Lock()
 	delete(n.icinga2Docker.running, n)
